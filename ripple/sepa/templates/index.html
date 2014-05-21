@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<title>SEPA.link - Make SEPA payments from your Ripple account</title>
+<script type="text/javascript" src="//use.typekit.net/cam6uyh.js"></script>
+<script type="text/javascript">try{Typekit.load();}catch(e){}</script>
+<style>
+  body {
+    padding: 0;
+    margin: 0;
+    font-family: "museo-sans", sans-serif;
+    font-size: 16px;
+    line-height: 1.35em;
+    font-weight: 300;
+    color: #333333;
+  }
+
+  header, #container {
+    padding: 20px;
+  }
+
+  header > div, #container > div {
+    width: 900px;
+    margin: 0 auto;
+  }
+
+  h3, h4 {
+    color: rgb(20, 74, 187);
+  }
+
+  a {
+    color: rgb(20, 74, 187);
+  }
+
+  {# -- Header -- #}
+
+  header {
+    background: url({{ url_for('.static', filename="p5.png") }}) repeat;
+    overflow: auto;
+  }
+
+  header h1:first-of-type {
+    display: inline;
+    float: left;
+    color: rgb(20, 74, 187);
+    font-family: "trajan-sans-pro";
+    font-weight: 700;
+  }
+  header h1:first-of-type span {
+    font-weight: 300;
+  }
+  header h2:first-child {
+    float: right;
+    font-size: 18px;
+    color: rgb(20, 74, 187);
+    font-weight: normal;
+    padding-top: 8px;
+  }
+
+  header:after {
+    clear: both;
+  }
+
+  {# -- SEPA form -- #}
+
+  div.form {
+    margin-top: 30px;
+    clear: left;
+    float: left;
+  }
+
+  div.form form {
+    overflow: auto;
+  }
+
+  div.form label {
+    display: block;
+  }
+
+  form span {
+    display: block;
+    font-size: 14px;
+  }
+
+  form span.required {
+    color: rgb(20, 74, 187);
+  }
+
+  input {
+    padding: 5px;
+    width: 400px;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 100;
+  }
+
+  button {
+    margin-top: 10px;
+    float: right;
+    background-color: rgb(20, 74, 187);
+    color: white;
+    border: 1px solid rgb(20, 74, 187);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: all 0.7s;
+  }
+  button:hover {
+    background-color: white;
+    color: rgb(20, 74, 187);
+  }
+
+  {# -- Info block -- #}
+
+  div.info {
+    width: 400px;
+    margin: 75px 0 0 100px;
+    float: left;
+  }
+
+  div.info:after {
+    clear: both;
+  }
+
+  div.info strong {
+    font-size: 36px;
+    line-height: 1.3em;
+  }
+
+  div.info a {
+    display: block;
+    padding-top: 10px;
+  }
+
+  {# -- Recent transactions #}
+
+  .transactions-header {
+    padding-top: 50px;
+    clear: both;
+  }
+
+  .transactions-header * {
+     display: inline;
+  }
+  .transactions-header h3 {
+    margin-right: 10px;
+  }
+  .transactions-header span, .transactions-header input {
+     font-size: 0.6em;
+  }
+  .transactions-header input {
+    padding: 2px;
+    width: 240px;
+  }
+
+  ul.transactions {
+    list-style-type: none;
+    padding-left: 0;
+  }
+
+  ul.transactions li span:first-child {
+    vertical-align: text-top;
+    display: inline-block;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+  }
+
+  ul.transactions li span.quoted:first-child {
+    background-color: transparent;
+    border: 1px solid black;
+  }
+
+  ul.transactions li span.received:first-child {
+    background-color: rgb(255, 193, 34);
+    border: 1px solid rgb(209, 174, 98);
+  }
+
+  ul.transactions li span.sent:first-child {
+    background-color: rgb(27, 162, 27);
+    border: 1px solid green;
+  }
+
+  ul.transactions li span.confirmed:first-child {
+    background-color: rgb(20, 74, 187);
+    border: 1px solid rgb(20, 74, 187);
+  }
+
+  {# Info below #}
+
+  hr {
+    clear: both;
+    margin: 35px 0 15px;
+  }
+
+  div#how {
+    width: 50%;
+    float: left;
+  }
+
+  div#security {
+    width: 40%;
+    float: left;
+    padding-left: 40px;
+  }
+</style>
+</head>
+<body>
+
+<header><div>
+    <h2>Make SEPA payments from your Ripple account.</h2>
+    <h1>SEPA<span>.link</span></h1>
+</div></header>
+
+
+<div id="container"><div>
+
+
+    <div class="form">
+      <form>
+        <span class="required"><label>IBAN</label>
+          <input name="iban" required placeholder="GB29NWBK60161331926819"></span>
+        <span class="required"><label>BIC</label>
+          <input name="bic" required placeholder="DEUTDEFF"></span>
+        <span><label>Name of Recipient (optional)</label><input name="recipient" placeholder="Jane Doe"></span>
+        <span><label>Text (optional)</label><input name="text" placeholder="Don't buy drugs. - Mom" maxlength="140"></span>
+        <button>Execute via Ripple</button>
+      </form>
+    </div>
+
+
+    <div class="info">
+      We charge<br>
+
+      <strong>
+      1.00 € <small>fixed fee</small><br>
+      + 5% <small>of amount</small>
+      </strong>
+      <br>
+      Daily limit per Ripple account: 100 €.<br>
+      <a href="#more">Learn more</a>
+    </div>
+
+
+{% if tickets %}
+    <div class="transactions-header">
+      <h3>Recent transactions</h3>
+      <span>To check on the status of your transfer, enter your Ripple address:</span>
+      <input>
+    </div>
+
+    <ul class="transactions">
+      {% for ticket in tickets %}
+      <li>
+        <span class="{{ ticket.status }}"></span>
+        <em>{{ ticket.ripple_address }}</em> sent <em>{{ "{:,.2f}".format(ticket.amount) }} €</em> <small>&nbsp;&dash; {{ ticket.created_at|timesince }} ago</small>.
+        <span>Status: {{ ticket.status_text }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+{% endif %}
+
+
+    <hr id="more">
+
+    <div id="how">
+      <h3>How does it work?</h3>
+
+      <p>You'll send us the money via Ripple, We will send the requested
+      amount to the recipient you specified via a SEPA transfer.
+
+      <p>The recipient will see <strong>ripple.link</strong> given as the
+      payment source. Consider putting your name in the text field.
+
+      <p>We will generally process transfers immediately, and the rest is
+      up to the banks. At any time, you can check the status of your
+      transfer on this page.
+
+      <p>In case your transfer does not go through, you will be refunded
+      your payment on Ripple, excluding the fee.
+
+      <h4>Problems?</h4>
+      <p>
+        If Ripple gives you the error message "This address is not Ripple
+        enabled", make sure that your IBAN and BIC are correct.
+    </div>
+
+    <div id="security">
+      <h3>Notes on Security</h3>
+
+      <p>Your transfer to the the bridge is public record as part of the
+      Ripple ledger. The recipient information is only known to us.
+
+      <p>
+        As soon as we process your Ripple payment, the non-public data is
+        removed from our servers; we'll keep on to it for a while on an
+        offline system.
+
+      <h3>Who runs this?</h3>
+      <p>
+        My name is <a href="http://elsdoerfer.name/">Michael Elsdörfer</a>.
+        I am also responsible for <a href="https://wasipaid.com">wasipaid.com</a>.
+        The source code behind this bridge
+        <a href="https://github.com/miracle2k/ripple-sepa-bridge">is available on Github</a>.
+    </div>
+
+
+
+</div></div>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script src="{{ url_for('static', filename='iban.js') }}"></script>
+<script>
+$(function() {
+  // Setup IBAN/BIC validations.
+  $('form input[name=iban]')[0].addEventListener('blur', function(input) {
+    input.srcElement.setCustomValidity(
+        IBAN.isValid(input.srcElement.value) ? '' : 'This is not a valid IBAN');
+  });
+
+  $('form input[name=bic]')[0].addEventListener('blur', function(input) {
+    var swiftRe = /^([a-zA-Z]){4}([a-zA-Z]){2}([0-9a-zA-Z]){2}([0-9a-zA-Z]{3})?$/;
+    input.srcElement.setCustomValidity(
+        swiftRe.test(input.srcElement.value) ? '' : 'This is not a valid BIC');
+  });
+
+  // Redirect SEPA form to Ripple Client
+  $('form').on('submit', function() {
+    var form = $(this);
+    var parts = [];
+    function encode(s) { return s.replace(/^\s+|\s+$/g, '').replace(' ', '+'); }
+    if (form.find('[name=recipient]').val())
+      parts.push(encode(form.find('[name=recipient]').val()));
+    parts.push(encode(form.find('[name=iban]').val()));
+    parts.push(encode(form.find('[name=bic]').val()));
+    if (form.find('[name=text]').val())
+      parts.push(encode(form.find('[name=text]').val()));
+    var name = parts.join('/') + '@sepa.link';
+    window.location.href = "https://ripple.com//send?to=" + name;
+    return false;
+  });
+});
+</script>
+</body>
+</html>
