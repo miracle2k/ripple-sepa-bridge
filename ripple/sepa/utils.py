@@ -315,6 +315,10 @@ def parse_sepa_data(s):
     this format::
 
         recipient+name/IBAN/BIC/foo+bar
+
+    This is the recommended format. Really what we do is  split at /, try
+    to find parts that are an IBAN or BIC, and let the other two parts be
+    Recipient + Text.
     """
     if ' ' in s:
         # Use the superior, space based form.
@@ -323,30 +327,41 @@ def parse_sepa_data(s):
     else:
         enable_spaces = lambda s: s.replace('+', ' ')
         parts = s.split('/')
-        if len(parts) not in (3, 4):
+        if len(parts) not in (2, 3, 4):
             raise ValueError('old-style recipient has wrong number of parts')
-        recipient_name = enable_spaces(parts[0])
-        nums = parts[1:2]
-        if len(parts) > 3:
-            text = enable_spaces(parts[3])
-        else:
-            text = ''
 
-        iban = bic = None
-        for num in nums:
+        recipient_name = text = iban = bic = ''
+        for idx, part in enumerate(parts):
             try:
-                bic = validate_swift_bic(num)
+                bic = validate_swift_bic(part)
                 continue
             except ValueError:
                 pass
 
             try:
-                iban = stdnum.iban.validate(num)
+                iban = stdnum.iban.validate(part)
                 continue
             except ValidationError:
                 pass
 
-            raise ValueError('Unrecognized BIC or IBAN: %s' % num)
+            # An unrecognized text will be the recipient only if
+            # listed first, or when we know we have all four parts.
+            if not recipient_name:
+                if idx == 0 or len(parts) == 4:
+                    recipient_name = enable_spaces(part)
+                    continue
+
+            # If there are only three parts (= 1 text part), we
+            # will use it as the text unless it is first.
+            assert not text
+            text = enable_spaces(part)
+
+
+    # BIC and IBAN are required
+    if not iban:
+        raise ValueError('Did not find a valid IBAN')
+    if not bic:
+        raise ValueError('Did not find a valid BIC')
 
     return {
         'name': recipient_name,
