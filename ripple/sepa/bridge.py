@@ -4,33 +4,15 @@ from decimal import Decimal
 import json
 import os
 import binascii
-from flask import Flask, request, Response, url_for, jsonify, render_template
+from flask import Flask, request, Response, url_for, jsonify, render_template, Blueprint, current_app
 from flask.ext.sqlalchemy import SQLAlchemy
 import requests
 from ripple_federation import Federation
+from werkzeug.exceptions import BadRequest
 from .utils import parse_sepa_data, add_response_headers, timesince
 
 
-app = Flask(__name__)
-app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:////tmp/sepalink.db')
-app.config.setdefault('FIXED_FEE', Decimal('1.50'))
-app.config.setdefault('VOLUME_FEE', Decimal('5'))
-app.config.setdefault('BRIDGE_ADDRESS', 'rNrvihhhjDu6xmAzJBiKmEZDkjdYufh8s4')
-app.config.setdefault('ACCEPTED_ISSUERS', ['rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B'])
-app.config.setdefault('SEPA_URL', '')
-app.config.setdefault('USE_HTTPS', False)
-app.jinja_env.filters['timesince'] = timesince
-
-db = SQLAlchemy(app)
-
-
-@app.teardown_appcontext
-def shutdown_session(exception=None):
-    if exception:
-        db.session.rollback()
-    else:
-        db.session.commit()
-
+db = SQLAlchemy()
 
 class Ticket(db.Model):
     """Tracks a transfer from initial quote to confirmed submission.
@@ -83,13 +65,21 @@ class Ticket(db.Model):
         self.bic = self.iban = self.recipient_name = self.text = None
 
 
-db.create_all()
+site = Blueprint('site', __name__)
+
+
+@site.teardown_app_request
+def shutdown_session(exception=None):
+    if exception:
+        db.session.rollback()
+    else:
+        db.session.commit()
 
 
 CORS = {"Access-Control-Allow-Origin": "*"}
 
 
-@app.route('/ripple.txt')
+@site.route('/ripple.txt')
 @add_response_headers(CORS)
 def ripple_txt():
     """Format a ripple txt and expose some info about this service.
@@ -114,7 +104,7 @@ def ripple_txt():
         mimetype='text/plain')
 
 
-@app.route('/federation')
+@site.route('/federation')
 @add_response_headers(CORS)
 def federation():
     """The federation endpoint. Answers quote requests from Ripple clients.
@@ -125,11 +115,11 @@ def federation():
                 "currency": "EUR",
                 "issuer": issuer
             }
-            for issuer in app.config['ACCEPTED_ISSUERS']
+            for issuer in current_app.config['ACCEPTED_ISSUERS']
         ],
         "quote_url": '{}://{}{}'.format(
-            'https' if app.config['USE_HTTPS'] else 'http',
-            request.host, url_for('quote')),
+            'https' if current_app.config['USE_HTTPS'] else 'http',
+            request.host, url_for('.quote')),
     }
     federation = Federation({request.host: config})
 
@@ -143,7 +133,7 @@ def federation():
     return jsonify(federation.endpoint(request.values, ))
 
 
-@app.route('/quote')
+@site.route('/quote')
 @add_response_headers(CORS)
 def quote():
     try:
@@ -159,8 +149,8 @@ def quote():
     amount = Decimal(amount[0])
 
     # Determine the fee the user has to pay
-    fee = Decimal(app.config.get('FIXED_FEE'))
-    fee = fee + amount * (app.config.get('VOLUME_FEE')/100)
+    fee = Decimal(current_app.config.get('FIXED_FEE'))
+    fee = fee + amount * (current_app.config.get('VOLUME_FEE')/100)
 
     # Generate a quote id, store the thing in the database
     ticket = Ticket(amount=amount, fee=fee, **sepa)
@@ -174,16 +164,16 @@ def quote():
                 {
                     "currency": "EUR",
                     "value": "%s" % (ticket.amount + ticket.fee),
-                    "issuer": app.config['ACCEPTED_ISSUERS'][0]
+                    "issuer": current_app.config['ACCEPTED_ISSUERS'][0]
                 }
             ],
-            "address": app.config['BRIDGE_ADDRESS'],
+            "address": current_app.config['BRIDGE_ADDRESS'],
             "expires": calendar.timegm(ticket.expires.timetuple())
         }
     })
 
 
-@app.route('/on_payment')
+@site.route('/on_payment')
 def on_payment_received():
     """wasipaid.com will call this url when we receive a payment.
     """
@@ -201,7 +191,7 @@ def on_payment_received():
     if ticket:
         if Decimal(payment['amount']) == (ticket.amount + ticket.fee):
             # Call the SEPA backend
-            result = requests.post(app.config['SEPA_API'], data={
+            result = requests.post(current_app.config['SEPA_API'], data={
                 'name': ticket.recipient_name,
                 'bic': ticket.bic,
                 'iban': ticket.iban,
@@ -220,8 +210,33 @@ def on_payment_received():
     return 'OK', 200
 
 
-@app.route('/')
+@site.route('/')
 def index():
     tickets = Ticket.query.filter(
         Ticket.status!='quoted').order_by('-created_at')[:10]
     return render_template('index.html', tickets=tickets)
+
+
+
+def create_app(config=None):
+    """App-factory.
+    """
+    app = Flask(__name__)
+    app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:////tmp/sepalink.db')
+    app.config.setdefault('FIXED_FEE', Decimal('1.50'))
+    app.config.setdefault('VOLUME_FEE', Decimal('5'))
+    app.config.setdefault('BRIDGE_ADDRESS', 'rNrvihhhjDu6xmAzJBiKmEZDkjdYufh8s4')
+    app.config.setdefault('ACCEPTED_ISSUERS', ['rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B'])
+    app.config.setdefault('SEPA_URL', '')
+    app.config.setdefault('USE_HTTPS', False)
+    app.config.update(**config or {})
+
+    app.jinja_env.filters['timesince'] = timesince
+
+    app.register_blueprint(site)
+
+    db.init_app(app)
+    with app.app_context():
+        db.create_all()
+
+    return app

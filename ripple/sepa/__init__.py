@@ -1,1 +1,1 @@
-from .bridge import app
+from .bridge import create_app
