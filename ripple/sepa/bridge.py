@@ -143,7 +143,8 @@ def quote():
             'invalidSEPA', 'Cannot find a valid SEPA recipient: %s' % e))
 
     amount = request.values['amount'].split('/')
-
+    if len(amount) != 2:
+        raise BadRequest()
     if not amount[1] == 'EUR':
         raise ValueError()
     amount = Decimal(amount[0])
