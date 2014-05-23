@@ -9,6 +9,7 @@ from flask import (
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.sslify import SSLify
 import logbook
+from postmark import PMMail
 import requests
 import confcollect
 from ripple_federation import Federation
@@ -189,6 +190,7 @@ def on_payment_received():
         return 'not at all ok', 400
 
     payment = request.json['data']
+    tx_hash = request.json['transaction']['TransactionHash']
 
     # Find the ticket
     ticket = Ticket.query.get(payment['invoice_id']) \
@@ -201,7 +203,7 @@ def on_payment_received():
                 'bic': ticket.bic,
                 'iban': ticket.iban,
                 'text': ticket.text,
-                'verify': request.json['transaction']['TransactionHash']
+                'verify': tx_hash
             })
             result.raise_for_status()
             ticket.ripple_address = payment['sender']
@@ -211,8 +213,31 @@ def on_payment_received():
 
         # Can't handle the payment.
         ticket.failed = 'unexpected'
+        send_mail(
+            'Received payment with unexpected amount',
+            ('Transaction {tx} matches ticket {t}, but the '
+                          'amounts do not match ({{txa}} vs {{ta}}).').format(
+                   tx=tx_hash,
+                   t=ticket.id,
+                   txa=Decimal(payment['amount']),
+                   ta=ticket.amount + ticket.fee
+               )
+        )
+    else:
+        send_mail(
+            'Received unexpected payment',
+            'Transaction {tx} does not match a ticket'.format(tx=tx_hash))
+
 
     return 'OK', 200
+
+
+def send_mail(subject, text):
+    PMMail(api_key=current_app.config['POSTMARK_KEY'],
+           sender=current_app.config['POSTMARK_SENDER'],
+           to=current_app.config['ADMINS'],
+           subject=subject,
+           text_body=text).send()
 
 
 @site.route('/')
@@ -234,6 +259,12 @@ CONFIG_DEFAULTS = {
     'ACCEPTED_ISSUERS': [],
     # URL of the SEPA service to call
     'SEPA_API': None,
+    # The postmark API config; the bridge will notify you if it receives
+    # transactions that it cannot process.
+    'POSTMARK_KEY': None,
+    'POSTMARK_SENDER': None,
+    # E-Mail addresses to send these notifications to.
+    'ADMINS': [],
     # Disable to serve the bridge on unsecured HTTP. Useful in development
     # (with a modified client that uses HTTP).
     'USE_HTTPS': True,
@@ -255,7 +286,8 @@ def create_app(config=None):
     assert app.config.get('BRIDGE_ADDRESS')
     assert app.config.get('ACCEPTED_ISSUERS')
     assert app.config.get('SEPA_API')
-
+    assert app.config.get('POSTMARK_KEY')
+    assert app.config.get('POSTMARK_SENDER')
 
     # In production, Flask doesn't even both to log errors to console,
     # which I judge to be a bit eccentric.

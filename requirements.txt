@@ -9,4 +9,5 @@ logbook==0.7.0
 requests==2.3.0
 python-stdnum==0.9
 
+python-postmark==0.4.1
 raven==4.2.3

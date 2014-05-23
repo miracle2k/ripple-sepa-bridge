@@ -1,7 +1,9 @@
 from decimal import Decimal
 import json
+from unittest import mock
 from urllib.parse import parse_qsl
 from flask import url_for
+import postmark
 import responses
 import pytest
 from ripple.sepa import create_app
@@ -73,8 +75,14 @@ def app():
     return create_app(config={
         'SERVER_NAME': 'testinghost',
         'TESTING': True,
+        'DEBUG': True, # disables SSLify
         'SQLALCHEMY_DATABASE_URI': 'sqlite:///',
-        'SEPA_API': 'http://sepa/'
+        'SEPA_API': 'http://sepa/',
+        'BRIDGE_ADDRESS': 'rNrvihhhjDu6xmAzJBiKmEZDkjdYufh8s4',
+        'ACCEPTED_ISSUERS': ['rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B'],
+        'POSTMARK_KEY': 'foobar',
+        'POSTMARK_SENDER': 'admin@foo.bar',
+        'ADMINS': ['foo@example.org'],
     })
 
 
@@ -166,6 +174,13 @@ class TestWasIPaidNotifications:
             responses.reset()
         request.addfinalizer(done)
 
+    @pytest.fixture(autouse=True)
+    def mock_postmark(self, request, app):
+        patcher = mock.patch.object(postmark.PMMail, 'send')
+        patcher.start()
+        self.postmark_send = patcher
+        request.addfinalizer(patcher.stop)
+
     def wasipaid_tx(self, amount, currency, invoice_id=None):
         # A notification that wasipaid might send.
         return json.dumps({
@@ -239,7 +254,8 @@ class TestWasIPaidNotifications:
         # Test that the ticket has been marked as failed
         assert ticket.failed == 'unexpected'
 
-        # XXX test postmark call
+        # Test that an email was sent to postmark
+        assert len(postmark.PMMail.send.mock_calls) == 1
 
     def test_incorrect_ticket(self, client):
         """Assume a payment that has no matching ticket."""
@@ -253,6 +269,7 @@ class TestWasIPaidNotifications:
         # Validate only wasipaid was called, not the SEPA API
         assert len(responses.calls) == 1
 
-        # XXX Test that an email was sent to postmark
+        # Test that an email was sent to postmark
+        assert len(postmark.PMMail.send.mock_calls) == 1
 
 
