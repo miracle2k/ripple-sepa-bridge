@@ -3,5 +3,10 @@ Flask==0.10.1
 Flask-SQLAlchemy==1.0
 SQLAlchemy==0.9.4
 
+flask-sslify==0.1.4
+confcollect==0.1.3
+logbook==0.7.0
 requests==2.3.0
 python-stdnum==0.9
+
+raven==4.2.3

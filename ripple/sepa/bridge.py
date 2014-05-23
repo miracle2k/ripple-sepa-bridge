@@ -1,12 +1,16 @@
 import calendar
 from datetime import timedelta, datetime
 from decimal import Decimal
-import json
 import os
 import binascii
-from flask import Flask, request, Response, url_for, jsonify, render_template, Blueprint, current_app
+from flask import (
+    Flask, request, Response, url_for, jsonify, render_template, Blueprint,
+    current_app)
 from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.sslify import SSLify
+import logbook
 import requests
+import confcollect
 from ripple_federation import Federation
 from werkzeug.exceptions import BadRequest
 from .utils import parse_sepa_data, add_response_headers, timesince
@@ -218,24 +222,58 @@ def index():
     return render_template('index.html', tickets=tickets)
 
 
+CONFIG_DEFAULTS = {
+    'SQLALCHEMY_DATABASE_URI': 'sqlite:///sepalink.db',
+    # Fixed fee to charge for every transaction.
+    'FIXED_FEE': Decimal('1.50'),
+    # Additional fee based on percentage of transfer amount
+    'VOLUME_FEE': Decimal('5'),
+    # Ask client to pay to this address
+    'BRIDGE_ADDRESS': None,
+    # Ask client to pay EUR of one of these issuers
+    'ACCEPTED_ISSUERS': [],
+    # URL of the SEPA service to call
+    'SEPA_API': None,
+    # Disable to serve the bridge on unsecured HTTP. Useful in development
+    # (with a modified client that uses HTTP).
+    'USE_HTTPS': True,
+    # URL for sentry error reporting
+    'SENTRY_DSN': False
+}
+
 
 def create_app(config=None):
     """App-factory.
     """
+
     app = Flask(__name__)
-    app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:////tmp/sepalink.db')
-    app.config.setdefault('FIXED_FEE', Decimal('1.50'))
-    app.config.setdefault('VOLUME_FEE', Decimal('5'))
-    app.config.setdefault('BRIDGE_ADDRESS', 'rNrvihhhjDu6xmAzJBiKmEZDkjdYufh8s4')
-    app.config.setdefault('ACCEPTED_ISSUERS', ['rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B'])
-    app.config.setdefault('SEPA_API', '')
-    app.config.setdefault('USE_HTTPS', False)
+    app.config.update(CONFIG_DEFAULTS)
     app.config.update(**config or {})
+    app.config.update(confcollect.from_environ(by_defaults=app.config))
 
+    # Validate config
+    assert app.config.get('BRIDGE_ADDRESS')
+    assert app.config.get('ACCEPTED_ISSUERS')
+    assert app.config.get('SEPA_API')
+
+
+    # In production, Flask doesn't even both to log errors to console,
+    # which I judge to be a bit eccentric.
+    logbook.StderrHandler(level='INFO').push_application()
+
+    # Add SSL support
+    sslify = SSLify(app)
+
+    # Log to sentry on errors
+    if app.config['SENTRY_DSN']:
+        from raven.contrib.flask import Sentry
+        sentry = Sentry(app, dsn=app.config['SENTRY_DSN'])
+
+    # Setup app modules
     app.jinja_env.filters['timesince'] = timesince
-
     app.register_blueprint(site)
 
+    # Make sure the database works.
     db.init_app(app)
     with app.app_context():
         db.create_all()
