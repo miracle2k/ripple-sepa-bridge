@@ -32,7 +32,7 @@ class Ticket(db.Model):
     created_at = db.Column(db.DateTime(timezone=False))
     ripple_address = db.Column(db.String(255))
     status = db.Column(db.String(255), index=True)
-    # self.failed = 'unexpected'
+    failed = db.Column(db.String(255), index=True)
     recipient_name = db.Column(db.String(255))
     bic = db.Column(db.String(255))
     iban = db.Column(db.String(255))
@@ -62,7 +62,7 @@ class Ticket(db.Model):
                 'confirmed': 'SEPA transfer confirmed'}[self.status]
 
     def clear(self):
-        self.bic = self.iban = self.recipient_name = self.text = None
+        self.bic = self.iban = self.recipient_name = self.text = ''
 
 
 site = Blueprint('site', __name__)
@@ -174,7 +174,7 @@ def quote():
     })
 
 
-@site.route('/on_payment')
+@site.route('/on_payment', methods=['POST'])
 def on_payment_received():
     """wasipaid.com will call this url when we receive a payment.
     """
@@ -184,11 +184,11 @@ def on_payment_received():
     if result.text != 'VALID':
         return 'not at all ok', 400
 
-    data = json.loads(request.data)
-    payment = data['data']
+    payment = request.json['data']
 
     # Find the ticket
-    ticket = Ticket.query.get(payment['destination'])
+    ticket = Ticket.query.get(payment['invoice_id']) \
+        if payment['invoice_id'] else None
     if ticket:
         if Decimal(payment['amount']) == (ticket.amount + ticket.fee):
             # Call the SEPA backend
@@ -197,16 +197,16 @@ def on_payment_received():
                 'bic': ticket.bic,
                 'iban': ticket.iban,
                 'text': ticket.text,
-                'verify': data['transaction']['TransactionHash']
+                'verify': request.json['transaction']['TransactionHash']
             })
             result.raise_for_status()
-            ticket.ripple_address = payment['account']
-            ticket.state = 'queued'
+            ticket.ripple_address = payment['sender']
+            ticket.status = 'received'
             ticket.clear()
             return 'OK', 200
 
-    # Can't handle the payment.
-    ticket.failed = 'unexpected'
+        # Can't handle the payment.
+        ticket.failed = 'unexpected'
 
     return 'OK', 200
 
@@ -228,7 +228,7 @@ def create_app(config=None):
     app.config.setdefault('VOLUME_FEE', Decimal('5'))
     app.config.setdefault('BRIDGE_ADDRESS', 'rNrvihhhjDu6xmAzJBiKmEZDkjdYufh8s4')
     app.config.setdefault('ACCEPTED_ISSUERS', ['rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B'])
-    app.config.setdefault('SEPA_URL', '')
+    app.config.setdefault('SEPA_API', '')
     app.config.setdefault('USE_HTTPS', False)
     app.config.update(**config or {})
 
