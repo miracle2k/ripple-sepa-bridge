@@ -1,0 +1,6 @@
+BRIDGE_ADDRESS = 'rNrvihhhjDu6xmAzJBiKmEZDkjdYufh8s4'
+ACCEPTED_ISSUERS = ['rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B']
+SEPA_API = 'http://docker:8081'
+POSTMARK_KEY = None,
+POSTMARK_SENDER = None,
+ADMINS = []

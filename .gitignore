@@ -1,2 +1,4 @@
+/config.py
+
 # Default SQLite db
 sepalink.db
