@@ -103,6 +103,16 @@ class TestBridgeAPI:
     """The API we provide to Ripple clients.
     """
 
+    def test_ripple_txt(self, client):
+        """Make sure ripple.txt can be viewed."""
+        response = client.get(url_for('site.ripple_txt'))
+        assert response.status_code == 200
+
+    def test_index(self, client):
+        """Make sure index can be viewed."""
+        response = client.get(url_for('site.index'))
+        assert response.status_code == 200
+
     def test_federation(self, client):
         """Test the Ripple federation view.
         """

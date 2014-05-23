@@ -88,7 +88,8 @@ class Ticket(db.Model):
         ).one()[0]
         return volume or Decimal('0')
 
-site = Blueprint('site', __name__)
+
+site = Blueprint('site', __name__, static_folder='static')
 
 
 @site.teardown_app_request
@@ -110,9 +111,9 @@ def ripple_txt():
     ripple_txt_options = {
         'domain': request.host,
         'federation_url': '{}://{}{}'.format(
-            'https' if app.config['USE_HTTPS'] else 'http',
-            request.host, url_for('federation')),
-        'accounts': '\n'.join([app.config['BRIDGE_ADDRESS']])
+            'https' if current_app.config['USE_HTTPS'] else 'http',
+            request.host, url_for('.federation')),
+        'accounts': '\n'.join([current_app.config['BRIDGE_ADDRESS']])
     }
     return Response("""
 [domain]
