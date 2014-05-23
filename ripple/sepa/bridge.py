@@ -8,6 +8,7 @@ from flask import (
     current_app)
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.sslify import SSLify
+import sqlalchemy
 import logbook
 from postmark import PMMail
 import requests
@@ -69,6 +70,23 @@ class Ticket(db.Model):
     def clear(self):
         self.bic = self.iban = self.recipient_name = self.text = ''
 
+    @classmethod
+    def tx_volume_today(cls):
+        """Determine the volume handled by the bridge today.
+        """
+        today = datetime.utcnow().date()
+        volume = (db.session
+            .query(sqlalchemy.sql.func.sum(Ticket.amount))
+            # Ignore quotes for which no payment was received
+            .filter(Ticket.status!='quoted')
+            # Only look at tickets from today
+            .filter(sqlalchemy.func.date(Ticket.created_at) == today)
+            # This does not work in SQLite, see:
+            #   http://stackoverflow.com/questions/17333014/convert-selected-datetime-to-date-in-sqlalchemy#comment25152032_17334055
+            #   http://sqlite.1065341.n5.nabble.com/CAST-td23755.html
+            #.filter(cast(Ticket.created_at, sqlalchemy.types.Date)==today)
+        ).one()[0]
+        return volume or Decimal('0')
 
 site = Blueprint('site', __name__)
 
@@ -153,6 +171,21 @@ def quote():
     if not amount[1] == 'EUR':
         raise ValueError()
     amount = Decimal(amount[0])
+
+    # Validate limits
+    if current_app.config['TX_LIMIT']:
+        if amount > current_app.config['TX_LIMIT']:
+            return jsonify(Federation.error(
+                'limitExceeded',
+                'The amount you are trying to send is too large (limit: %s)' %
+                    current_app.config['TX_LIMIT']))
+    if current_app.config['DAILY_TX_LIMIT']:
+        cur_volume = Ticket.tx_volume_today()
+        if amount + cur_volume > current_app.config['DAILY_TX_LIMIT']:
+            return jsonify(Federation.error(
+                'limitExceeded',
+                'We are currently unable to process such an amount, try '
+                'again later.'))
 
     # Determine the fee the user has to pay
     fee = Decimal(current_app.config.get('FIXED_FEE'))
@@ -253,6 +286,9 @@ CONFIG_DEFAULTS = {
     'FIXED_FEE': Decimal('1.50'),
     # Additional fee based on percentage of transfer amount
     'VOLUME_FEE': Decimal('5'),
+    # Limits daily, and for individual transactions
+    'TX_LIMIT': Decimal(100),
+    'DAILY_TX_LIMIT': Decimal(500),
     # Ask client to pay to this address
     'BRIDGE_ADDRESS': None,
     # Ask client to pay EUR of one of these issuers

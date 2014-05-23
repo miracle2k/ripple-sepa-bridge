@@ -2,7 +2,7 @@ from decimal import Decimal
 import json
 from unittest import mock
 from urllib.parse import parse_qsl
-from flask import url_for
+from flask import url_for, current_app
 import postmark
 import responses
 import pytest
@@ -71,8 +71,8 @@ def test_sepa_url():
 
 
 @pytest.fixture
-def app():
-    return create_app(config={
+def app(request):
+    app = create_app(config={
         'SERVER_NAME': 'testinghost',
         'TESTING': True,
         'DEBUG': True, # disables SSLify
@@ -85,16 +85,17 @@ def app():
         'ADMINS': ['foo@example.org'],
     })
 
-
-@pytest.fixture
-def client(request, app):
     ctx = app.app_context()
     ctx.push()
-
     def teardown():
         ctx.pop()
     request.addfinalizer(teardown)
 
+    return app
+
+
+@pytest.fixture
+def client(request, app):
     return app.test_client()
 
 
@@ -273,3 +274,69 @@ class TestWasIPaidNotifications:
         assert len(postmark.PMMail.send.mock_calls) == 1
 
 
+class TestLimits:
+    """Test transaction limit feature."""
+
+    def create_ticket(self, status, amount, fee, failed=''):
+        ticket = Ticket(amount=amount, fee=fee)
+        ticket.status = status
+        ticket.failed = failed
+        db.session.add(ticket)
+        db.session.commit()
+        return ticket
+
+    def test_volume_calc(self, app):
+        # No tx = 0
+        assert Ticket.tx_volume_today() == 0
+        # Tx in wrong state = still 0
+        self.create_ticket('quoted', 100, 10)
+        assert Ticket.tx_volume_today() == 0
+        # Processed tx
+        self.create_ticket('received', 100, 10)
+        assert Ticket.tx_volume_today() == 100
+        # A second one is added to the total
+        self.create_ticket('received', 50, 5)
+        assert Ticket.tx_volume_today() == 150
+        # Tx in failed state that has been SEPA-sent is counted as well,
+        # just to be safe.
+        self.create_ticket('received', 50, 5, failed='unknown')
+        assert Ticket.tx_volume_today() == 200
+
+    def test_individual_tx_limit(self, client):
+        """Cannot send a tx larger than the limit.
+        """
+        current_app.config['TX_LIMIT'] = Decimal('100')
+
+        response = client.get(url_for('site.quote'), query_string={
+            'type': 'quote', 'domain': 'testinghost',
+            'destination': 'DABADKKK/GB82WEST12345698765432',
+            'amount': '122.00/EUR'})
+        assert response.status_code == 200
+        result = json.loads(response.data.decode('utf8'))
+        assert result['error']
+
+    def test_total_tx_limit(self, client):
+        """Make sure we stop accepting quotes when we are about to exceed
+        the limit.
+        """
+
+        current_app.config['DAILY_TX_LIMIT'] = Decimal('100')
+        self.create_ticket('received', 90, 10)
+
+        # We are unable to process 12 euros
+        response = client.get(url_for('site.quote'), query_string={
+            'type': 'quote', 'domain': 'testinghost',
+            'destination': 'DABADKKK/GB82WEST12345698765432',
+            'amount': '12.00/EUR'})
+        assert response.status_code == 200
+        result = json.loads(response.data.decode('utf8'))
+        assert result['error']
+
+        # But 9 is fine.
+        response = client.get(url_for('site.quote'), query_string={
+            'type': 'quote', 'domain': 'testinghost',
+            'destination': 'DABADKKK/GB82WEST12345698765432',
+            'amount': '9.00/EUR'})
+        assert response.status_code == 200
+        result = json.loads(response.data.decode('utf8'))
+        assert result['quote']
