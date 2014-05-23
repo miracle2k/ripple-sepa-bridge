@@ -3,7 +3,7 @@ Flask==0.10.1
 Flask-SQLAlchemy==1.0
 SQLAlchemy==0.9.4
 
-ripple-federation==0.1.3
+ripple-federation==1.1.3
 flask-sslify==0.1.4
 confcollect==0.1.3
 logbook==0.7.0
