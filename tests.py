@@ -246,6 +246,23 @@ class TestWasIPaidNotifications:
         assert ticket.text == ''
         assert ticket.recipient_name == ''
 
+    def test_correct_payment_send_email(self, client):
+        # With no SEPA backend configured, we will simply send out
+        # an email for manual transfer initiation.
+        current_app.config['SEPA_API'] = None
+        ticket = self.create_ticket()
+
+        # Fake a payment for this ticket
+        response = client.post(
+            url_for('site.on_payment_received'),
+            data=self.wasipaid_tx('110', 'EUR', invoice_id=ticket.id),
+            content_type='application/json')
+        assert response.status_code == 200
+        assert response.data == b'OK'
+
+        # Validate the call to the SEPA API
+        assert len(postmark.PMMail.send.mock_calls) == 1
+
     def test_incorrect_payment(self, client):
         """Send a payment with the incorrect amount."""
 

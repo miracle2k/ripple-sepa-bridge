@@ -1,0 +1,10 @@
+The bridge received the payment for the following transfer request:
+
+Name: {{ ticket.name }}
+IBAN: {{ ticket.iban }}
+BIC: {{ ticket.bic }}
+Text: {{ ticket.text }}
+Amount: {{ ticket.amount }}
+Fee Payed: {{ ticket.fee }}
+
+The id of this transfer is {{ ticket.id }}.

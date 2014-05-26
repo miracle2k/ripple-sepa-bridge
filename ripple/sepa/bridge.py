@@ -232,14 +232,21 @@ def on_payment_received():
     if ticket:
         if Decimal(payment['amount']) == (ticket.amount + ticket.fee):
             # Call the SEPA backend
-            result = requests.post(current_app.config['SEPA_API'], data={
-                'name': ticket.recipient_name,
-                'bic': ticket.bic,
-                'iban': ticket.iban,
-                'text': ticket.text,
-                'verify': tx_hash
-            })
-            result.raise_for_status()
+            if current_app.config['SEPA_API']:
+                result = requests.post(current_app.config['SEPA_API'], data={
+                    'name': ticket.recipient_name,
+                    'bic': ticket.bic,
+                    'iban': ticket.iban,
+                    'text': ticket.text,
+                    'verify': tx_hash
+                })
+                result.raise_for_status()
+            # If no backend is configured, send an email instead.
+            else:
+                send_mail(
+                    'Payment received: Execute a transfer',
+                    render_template('transfer.txt', **{'ticket': ticket}))
+
             ticket.ripple_address = payment['sender']
             ticket.status = 'received'
             ticket.clear()
@@ -322,7 +329,6 @@ def create_app(config=None):
     # Validate config
     assert app.config.get('BRIDGE_ADDRESS')
     assert app.config.get('ACCEPTED_ISSUERS')
-    assert app.config.get('SEPA_API')
     assert app.config.get('POSTMARK_KEY')
     assert app.config.get('POSTMARK_SENDER')
 
