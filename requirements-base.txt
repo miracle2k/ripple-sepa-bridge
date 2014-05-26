@@ -6,7 +6,7 @@ SQLAlchemy==0.9.4
 
 ripple-federation==1.1.3
 flask-sslify==0.1.4
-confcollect==0.1.3
+confcollect==0.1.4
 logbook==0.7.0
 requests==2.3.0
 python-stdnum==0.9
