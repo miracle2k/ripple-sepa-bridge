@@ -338,7 +338,7 @@ def create_app(config=None):
 
     # Support specifying a postgres database url without anything.
     # I'd really like to find a good way of doing this outside.
-    if app.config.get('POSTGRES_HOST'):
+    if app.config.get('PGHOST'):
         app.config['SQLALCHEMY_DATABASE_URI'] = \
             'postgres://{u}:{p}@{h}/{n}'.format(
                 u=app.config['PGUSER'],
