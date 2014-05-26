@@ -9,7 +9,7 @@ except ImportError:
     print('No local config file exists, relying on environment')
     config = {}
 
-app = create_app(config=config)
+application = app = create_app(config=config)
 
 
 if __name__ == '__main__':
