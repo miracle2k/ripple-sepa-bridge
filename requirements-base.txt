@@ -1,0 +1,17 @@
+Flask==0.10.1
+blinker==1.3
+
+Flask-SQLAlchemy==1.0
+SQLAlchemy==0.9.4
+
+ripple-federation==1.1.3
+flask-sslify==0.1.4
+confcollect==0.1.3
+logbook==0.7.0
+requests==2.3.0
+python-stdnum==0.9
+
+python-postmark==0.4.1
+raven==4.2.3
+
+uwsgi==2.0.4
