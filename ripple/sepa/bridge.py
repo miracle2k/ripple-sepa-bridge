@@ -306,7 +306,7 @@ CONFIG_DEFAULTS = {
     # (with a modified client that uses HTTP).
     'USE_HTTPS': True,
     # URL for sentry error reporting
-    'SENTRY_DSN': False
+    'SENTRY_DSN': None
 }
 
 
