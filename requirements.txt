@@ -1,2 +1,4 @@
 -r requirements-base.txt
+
 psycopg2==2.5.3
+gunicorn==18.0
