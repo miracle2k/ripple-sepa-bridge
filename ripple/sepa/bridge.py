@@ -347,6 +347,7 @@ def create_app(config=None):
                 n=app.config['PGDATABASE'],
             )
 
+    print('Using %s as database' % app.config['SQLALCHEMY_DATABASE_URI'])
 
     # In production, Flask doesn't even both to log errors to console,
     # which I judge to be a bit eccentric.
