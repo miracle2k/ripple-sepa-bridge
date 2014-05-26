@@ -1,0 +1,35 @@
+# Runs the bridge using the flynn-postgres appliance as a backend.
+
+# Create a database with flynn-postgres.
+Flynn-Postgres:
+    in: db-api
+    for: db
+    expose_as: POSTGRES_
+
+
+# Run postgres itself
+db:
+    image: elsdoerfer/flynn-postgres
+    volumes: {data: /data}
+    cmd: "postgres -service {DEPLOY_ID}:postgres"
+    env:
+        # Needed to generate the right SSL cert
+        EXTERNAL_IP: "{HOST}"
+
+
+# The HTTP API shipped with flynn-postgres is a very complicated way
+# to create a user account.
+db-api:
+    image: elsdoerfer/flynn-postgres
+    cmd: api
+    env:
+        FLYNN_POSTGRES: "{DEPLOY_ID}:postgres"
+
+
+app:
+    git: .
+    cmd: web
+    sdutil:
+        expose:
+          "postgres": PGHOST
+        register: true
