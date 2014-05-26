@@ -290,6 +290,10 @@ def index():
 
 CONFIG_DEFAULTS = {
     'SQLALCHEMY_DATABASE_URI': 'sqlite:///sepalink.db',
+    'PGHOST': None,
+    'PGUSER': None,
+    'PGPASSWORD': None,
+    'PGDATABASE': None,
     # Fixed fee to charge for every transaction.
     'FIXED_FEE': Decimal('1.50'),
     # Additional fee based on percentage of transfer amount
@@ -331,6 +335,18 @@ def create_app(config=None):
     assert app.config.get('ACCEPTED_ISSUERS')
     assert app.config.get('POSTMARK_KEY')
     assert app.config.get('POSTMARK_SENDER')
+
+    # Support specifying a postgres database url without anything.
+    # I'd really like to find a good way of doing this outside.
+    if app.config.get('POSTGRES_HOST'):
+        app.config['SQLALCHEMY_DATABASE_URI'] = \
+            'postgres://{u}:{p}@{h}/{n}'.format(
+                u=app.config['PGUSER'],
+                p=app.config['PGPASSWORD'],
+                h=app.config['PGHOST'],
+                n=app.config['PGDATABASE'],
+            )
+
 
     # In production, Flask doesn't even both to log errors to console,
     # which I judge to be a bit eccentric.
