@@ -95,6 +95,11 @@ site = Blueprint('site', __name__, static_folder='static')
 @site.teardown_app_request
 def shutdown_session(exception=None):
     if exception:
+        print("Requested ended with exception:", exception)
+        # The gunicorn-bug exceptions are on the stack and can be printed.
+        #import traceback
+        #print(traceback.format_exc())
+    if exception:
         db.session.rollback()
     else:
         db.session.commit()
