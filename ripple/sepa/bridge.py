@@ -180,14 +180,14 @@ def quote():
 
     # Validate limits
     if current_app.config['TX_LIMIT']:
-        if amount > current_app.config['TX_LIMIT']:
+        if amount > Decimal(current_app.config['TX_LIMIT']):
             return jsonify(Federation.error(
                 'limitExceeded',
                 'The amount you are trying to send is too large (limit: %s)' %
                     current_app.config['TX_LIMIT']))
     if current_app.config['DAILY_TX_LIMIT']:
         cur_volume = Ticket.tx_volume_today()
-        if amount + cur_volume > current_app.config['DAILY_TX_LIMIT']:
+        if amount + cur_volume > Decimal(current_app.config['DAILY_TX_LIMIT']):
             return jsonify(Federation.error(
                 'limitExceeded',
                 'We are currently unable to process such an amount, try '
