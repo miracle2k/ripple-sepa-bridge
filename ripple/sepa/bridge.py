@@ -224,7 +224,7 @@ def on_payment_received():
         return 'not at all ok', 400
 
     payment = request.json['data']
-    tx_hash = request.json['transaction']['TransactionHash']
+    tx_hash = request.json['transaction']['hash']
 
     # Find the ticket
     ticket = Ticket.query.get(payment['invoice_id']) \
