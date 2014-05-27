@@ -227,7 +227,7 @@ def on_payment_received():
     tx_hash = request.json['transaction']['hash']
 
     # Find the ticket
-    ticket = Ticket.query.get(payment['invoice_id']) \
+    ticket = Ticket.query.get(payment['invoice_id'].lower()) \
         if payment['invoice_id'] else None
     if ticket:
         if Decimal(payment['amount']) == (ticket.amount + ticket.fee):
