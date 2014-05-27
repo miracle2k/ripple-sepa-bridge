@@ -298,7 +298,7 @@ def add_response_headers(headers={}):
     return decorator
 
 
-def parse_sepa_data(s):
+def parse_sepa_data(s, require_name=True):
     """To use this bridge, all the SEPA recipient info has to be somehow
     put in the user part of user@domain. This will convert such a user
     string into a dict with bic, iban, name and text fields.
@@ -362,6 +362,10 @@ def parse_sepa_data(s):
         raise ValueError('Did not find a valid IBAN')
     if not bic:
         raise ValueError('Did not find a valid BIC')
+    if not recipient_name and require_name:
+        # Maybe the name could be left off in theory (?), but we
+        # can't provide this service right now.
+        raise ValueError('Did not find a recipient name')
 
     return {
         'name': recipient_name,

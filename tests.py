@@ -14,6 +14,7 @@ from ripple.sepa.utils import parse_sepa_data
 def test_sepa_url():
     """Test the parsing of our SEPA-recipient encoding.
     """
+
     # Full dataset
     assert parse_sepa_data('User+Name/GB82WEST12345698765432/DABADKKK/Foo+Bar') == {
         'iban': 'GB82WEST12345698765432',
@@ -30,13 +31,15 @@ def test_sepa_url():
         'text': 'Foo Bar'
     }
 
-    # No name
-    assert parse_sepa_data('DABADKKK/GB82WEST12345698765432/Foo+Bar') == {
+    # No name (may be allowed or disallowd)
+    assert parse_sepa_data('DABADKKK/GB82WEST12345698765432/Foo+Bar', require_name=False) == {
         'iban': 'GB82WEST12345698765432',
         'bic': 'DABADKKK',
         'name': '',
         'text': 'Foo Bar'
     }
+    with pytest.raises(ValueError):
+        parse_sepa_data('DABADKKK/GB82WEST12345698765432/Foo+Bar', require_name=True)
 
     # No text
     assert parse_sepa_data('User+Name/DABADKKK/GB82WEST12345698765432') == {
@@ -47,7 +50,7 @@ def test_sepa_url():
     }
 
     # Neither name of text
-    assert parse_sepa_data('DABADKKK/GB82WEST12345698765432') == {
+    assert parse_sepa_data('DABADKKK/GB82WEST12345698765432', require_name=False) == {
         'iban': 'GB82WEST12345698765432',
         'bic': 'DABADKKK',
         'name': '',
