@@ -72,6 +72,10 @@ def test_sepa_url():
     with pytest.raises(ValueError):
         parse_sepa_data('User/GB82WEST12345698765432/Text')
 
+    # [Regression] Invalid IBAN with 4 parts
+    with pytest.raises(ValueError):
+        parse_sepa_data('Michael/GB82WEST1234569d8765432/DABADKKK/Test')
+
 
 @pytest.fixture
 def app(request):

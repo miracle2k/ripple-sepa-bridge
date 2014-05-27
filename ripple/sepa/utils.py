@@ -342,6 +342,9 @@ def parse_sepa_data(s, require_name=True):
                 iban = stdnum.iban.validate(part)
                 continue
             except ValidationError:
+                # TODO: We can do better here; if we get a more specific
+                # exception like InvalidChecksum, we can assume it's an
+                # IBAN but with a typo.
                 pass
 
             # An unrecognized text will be the recipient only if
@@ -353,8 +356,11 @@ def parse_sepa_data(s, require_name=True):
 
             # If there are only three parts (= 1 text part), we
             # will use it as the text unless it is first.
-            assert not text
-            text = enable_spaces(part)
+            if not text:
+                text = enable_spaces(part)
+                continue
+
+            raise ValueError('Do not know what to make of %s' % part)
 
 
     # BIC and IBAN are required
