@@ -134,7 +134,7 @@ class TestBridgeAPI:
         # Test a request with proper SEPA recipient.
         response = client.get(url_for('site.federation'), query_string={
             'type': 'federation', 'domain': 'testinghost',
-            'destination': 'DABADKKK/GB82WEST12345698765432'})
+            'destination': 'M/DABADKKK/GB82WEST12345698765432'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
         assert 'quote' in result['federation_json']['quote_url']
@@ -202,7 +202,7 @@ class TestWasIPaidNotifications:
     def wasipaid_tx(self, amount, currency, invoice_id=None):
         # A notification that wasipaid might send.
         return json.dumps({
-           'transaction': {'TransactionHash': 'foo'},
+           'transaction': {'hash': 'foo'},
            'ledger': {},
            'data': {
                'sender': 'rsender',
@@ -369,7 +369,7 @@ class TestLimits:
         # But 9 is fine.
         response = client.get(url_for('site.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'DABADKKK/GB82WEST12345698765432',
+            'destination': 'M/DABADKKK/GB82WEST12345698765432',
             'amount': '9.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
