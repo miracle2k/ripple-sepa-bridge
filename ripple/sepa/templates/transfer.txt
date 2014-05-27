@@ -1,6 +1,6 @@
 The bridge received the payment for the following transfer request:
 
-Name: {{ ticket.name }}
+Name: {{ ticket.recipient_name }}
 IBAN: {{ ticket.iban }}
 BIC: {{ ticket.bic }}
 Text: {{ ticket.text }}
