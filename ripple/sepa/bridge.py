@@ -284,7 +284,7 @@ def send_mail(subject, text):
 @site.route('/')
 def index():
     tickets = Ticket.query.filter(
-        Ticket.status!='quoted').order_by('-created_at')[:10]
+        Ticket.status!='quoted').order_by(Ticket.created_at.desc())[:10]
     return render_template('index.html', tickets=tickets)
 
 
