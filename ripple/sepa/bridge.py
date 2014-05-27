@@ -190,7 +190,7 @@ def quote():
 
     # Determine the fee the user has to pay
     fee = Decimal(current_app.config.get('FIXED_FEE'))
-    fee = fee + amount * (current_app.config.get('VOLUME_FEE')/100)
+    fee = fee + amount * (Decimal(current_app.config.get('VOLUME_FEE'))/100)
 
     # Generate a quote id, store the thing in the database
     ticket = Ticket(amount=amount, fee=fee, **sepa)
