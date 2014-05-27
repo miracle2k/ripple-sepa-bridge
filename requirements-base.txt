@@ -13,5 +13,3 @@ python-stdnum==0.9
 
 python-postmark==0.4.1
 raven==4.2.3
-
-uwsgi==2.0.4
