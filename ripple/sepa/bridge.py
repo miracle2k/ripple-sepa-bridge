@@ -276,7 +276,7 @@ def on_payment_received():
 def send_mail(subject, text):
     PMMail(api_key=current_app.config['POSTMARK_KEY'],
            sender=current_app.config['POSTMARK_SENDER'],
-           to=current_app.config['ADMINS'],
+           to=','.join(current_app.config['ADMINS']),
            subject=subject,
            text_body=text).send()
 
