@@ -238,8 +238,8 @@
       We charge<br>
 
       <strong>
-      1.00 € <small>fixed fee</small><br>
-      + 5% <small>of amount</small>
+      {{ '{:20,.2f}'.format(config['FIXED_FEE']) }} € <small>fixed fee</small><br>
+      +{{ config['VOLUME_FEE'] }}% <small>of amount</small>
       </strong>
       <br>
       Daily limit per bank account: 500 €.<br>
