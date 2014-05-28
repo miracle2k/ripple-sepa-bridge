@@ -355,7 +355,7 @@ class TestLimits:
         # Cannot send an individual transaction larger than the limit
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'DABADKKK/GB82WEST12345698765432',
+            'destination': 'F/DABADKKK/GB82WEST12345698765432',
             'amount': '122.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
@@ -395,7 +395,7 @@ class TestLimits:
         # We are unable to process 12 euros
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'DABADKKK/GB82WEST12345698765432',
+            'destination': 'M/DABADKKK/GB82WEST12345698765432',
             'amount': '12.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
