@@ -243,8 +243,10 @@
       We charge<br>
 
       <strong>
-      {{ '{:20,.2f}'.format(Decimal(config['FIXED_FEE'])) }} € <small>fixed fee</small><br>
-      +{{ config['VOLUME_FEE'] }}% <small>of amount</small>
+      {{ '{:20,.2f}'.format(Decimal(config['FIXED_FEE'])) }} € <small>fixed fee</small>
+      {% if Decimal(config['VOLUME_FEE']) %}
+      <br>+ {{ config['VOLUME_FEE'] }}% <small>of amount</small>
+      {% endif %}
       </strong>
       <br>
       Daily limit per bank account: 500 €.<br>
