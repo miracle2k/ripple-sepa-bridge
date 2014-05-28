@@ -171,6 +171,16 @@ class TestBridgeAPI:
         assert tickets[0].amount + tickets[0].fee == \
                Decimal(result['quote']['send'][0]['value'])
 
+    def test_quote_amount(self, client):
+        # Test a request with incorrectly formatted SEPA recipient.
+        response = client.get(url_for('bridge.quote'), query_string={
+            'type': 'quote', 'domain': 'testinghost',
+            'destination': '', 'amount': '100.88000009/EUR'})
+        assert response.status_code == 200
+        result = json.loads(response.data.decode('utf8'))
+        assert result['error']
+        assert not Ticket.query.all()
+
 
 class TestWasIPaidNotifications:
     """Test incoming payment notifications on the bridge account."""

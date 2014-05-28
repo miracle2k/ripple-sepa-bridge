@@ -102,6 +102,11 @@ def quote():
         raise ValueError()
     amount = Decimal(amount[0])
 
+    # Make sure the amount isn't dividing up any cents.
+    if amount.quantize(Decimal('0.00')) != amount:
+        return jsonify(Federation.error(
+                'invalidAmount', 'The amount must be divisible by 1 cent'))
+
     # Validate limits
     if current_app.config['TX_LIMIT']:
         if amount > Decimal(current_app.config['TX_LIMIT']):
