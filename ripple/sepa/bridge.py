@@ -60,7 +60,11 @@ def ripple_txt():
 @bridge.route('/federation')
 @add_response_headers(CORS)
 def federation():
-    """The federation endpoint. Answers quote requests from Ripple clients.
+    """The federation endpoint. This basically just points the client
+    to the url of the quoting service.
+
+    Note that the SEPA recipient is NOT validated here; the Ripple client
+    will only show the user error messages that occur during the quote.
     """
     config = {
         "currencies": [
@@ -75,13 +79,6 @@ def federation():
             request.host, url_for('.quote')),
     }
     federation = Federation({request.host: config})
-
-    # Validate the SEPA recipient
-    try:
-        parse_sepa_data(request.values['destination'])
-    except ValueError as e:
-        return jsonify(federation.error(
-            'invalidSEPA', 'Cannot find a valid SEPA recipient: %s' % e))
 
     return jsonify(federation.endpoint(request.values, ))
 
