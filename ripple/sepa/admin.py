@@ -25,7 +25,7 @@ def is_authenticated():
 
 def format_id(id):
     # http://stackoverflow.com/a/12221086/15677
-    s = "<small style='display: block; font-size: 10px; line-height: 11px; word-break: break-all; word-wrap: break-word;'><wbr>%s</wbr></small>" % id
+    s = "<small style='display: block; min-width: 100px; font-size: 10px; line-height: 11px; word-break: break-all; word-wrap: break-word;'><wbr>%s</wbr></small>" % id
     return Markup(s)
 
 
@@ -48,7 +48,8 @@ class TicketView(ModelView):
     column_filters = ('status', 'failed')
     column_searchable_list = ('ripple_address', 'id', 'recipient_name', 'bic', 'iban', 'text')
     column_formatters = {
-        'id': lambda v, c, m, p: format_id(m.id)
+        'id': lambda v, c, m, p: format_id(m.id),
+        'ripple_address': lambda v, c, m, p: format_id(m.ripple_address)
     }
 
 admin = Admin(index_view=IndexView())
