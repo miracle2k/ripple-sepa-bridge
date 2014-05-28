@@ -96,7 +96,8 @@ def quote():
     if len(amount) != 2:
         raise BadRequest()
     if not amount[1] == 'EUR':
-        raise ValueError()
+        return jsonify(Federation.error(
+            'invalidAmount', 'You can only send EUR.'))
     amount = Decimal(amount[0])
 
     # Make sure the amount isn't dividing up any cents.
