@@ -13,3 +13,6 @@ python-stdnum==0.9
 
 python-postmark==0.4.1
 raven==4.2.3
+
+Flask-Admin==1.0.8
+

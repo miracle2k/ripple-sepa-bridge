@@ -4,6 +4,7 @@ from flask import Flask
 from flask.ext.sslify import SSLify
 import logbook
 from .model import db
+from .admin import admin
 from .bridge import bridge
 from .utils import timesince
 
@@ -37,7 +38,10 @@ CONFIG_DEFAULTS = {
     # (with a modified client that uses HTTP).
     'USE_HTTPS': True,
     # URL for sentry error reporting
-    'SENTRY_DSN': None
+    'SENTRY_DSN': None,
+    # Passwords for the admin interface. If none are given, it will
+    # be disabled.
+    'ADMIN_AUTH': {}
 }
 
 
@@ -84,6 +88,10 @@ def create_app(config=None):
     # Setup app modules
     app.jinja_env.filters['timesince'] = timesince
     app.register_blueprint(bridge)
+
+    # Enable the admin
+    if app.config['ADMIN_AUTH']:
+        admin.init_app(app)
 
     # Make sure the database works.
     db.init_app(app)
