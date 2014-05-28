@@ -112,12 +112,12 @@ class TestBridgeAPI:
 
     def test_ripple_txt(self, client):
         """Make sure ripple.txt can be viewed."""
-        response = client.get(url_for('site.ripple_txt'))
+        response = client.get(url_for('bridge.ripple_txt'))
         assert response.status_code == 200
 
     def test_index(self, client):
         """Make sure index can be viewed."""
-        response = client.get(url_for('site.index'))
+        response = client.get(url_for('bridge.index'))
         assert response.status_code == 200
 
     def test_federation(self, client):
@@ -125,14 +125,14 @@ class TestBridgeAPI:
         """
 
         # Test a request with incorrectly formatted SEPA recipient.
-        response = client.get(url_for('site.federation'), query_string={
+        response = client.get(url_for('bridge.federation'), query_string={
             'type': 'federation', 'domain': 'testinghost', 'destination': 'foo'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
         assert result['error']
 
         # Test a request with proper SEPA recipient.
-        response = client.get(url_for('site.federation'), query_string={
+        response = client.get(url_for('bridge.federation'), query_string={
             'type': 'federation', 'domain': 'testinghost',
             'destination': 'M/DABADKKK/GB82WEST12345698765432'})
         assert response.status_code == 200
@@ -144,7 +144,7 @@ class TestBridgeAPI:
         """
 
         # Test a request with incorrectly formatted SEPA recipient.
-        response = client.get(url_for('site.quote'), query_string={
+        response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
             'destination': '', 'amount': '22.00/EUR'})
         assert response.status_code == 200
@@ -153,7 +153,7 @@ class TestBridgeAPI:
         assert not Ticket.query.all()
 
         # Test a successful quote request
-        response = client.get(url_for('site.quote'), query_string={
+        response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
             'destination': 'User/DABADKKK/GB82WEST12345698765432/Text',
             'amount': '22.00/EUR'})
@@ -230,7 +230,7 @@ class TestWasIPaidNotifications:
 
         # Fake a payment for this ticket
         response = client.post(
-            url_for('site.on_payment_received'),
+            url_for('bridge.on_payment_received'),
             data=self.wasipaid_tx('110', 'EUR', invoice_id=ticket.id),
             content_type='application/json')
         assert response.status_code == 200
@@ -261,7 +261,7 @@ class TestWasIPaidNotifications:
 
         # Fake a payment for this ticket
         response = client.post(
-            url_for('site.on_payment_received'),
+            url_for('bridge.on_payment_received'),
             data=self.wasipaid_tx('110', 'EUR', invoice_id=ticket.id),
             content_type='application/json')
         assert response.status_code == 200
@@ -277,7 +277,7 @@ class TestWasIPaidNotifications:
 
         # Fake a payment for this ticket
         response = client.post(
-            url_for('site.on_payment_received'),
+            url_for('bridge.on_payment_received'),
             data=self.wasipaid_tx('50', 'XRP', invoice_id=ticket.id),
             content_type='application/json')
         assert response.status_code == 200
@@ -295,7 +295,7 @@ class TestWasIPaidNotifications:
     def test_incorrect_ticket(self, client):
         """Assume a payment that has no matching ticket."""
         response = client.post(
-            url_for('site.on_payment_received'),
+            url_for('bridge.on_payment_received'),
             data=self.wasipaid_tx('110', 'EUR', invoice_id=None),
             content_type='application/json')
         assert response.status_code == 200
@@ -341,7 +341,7 @@ class TestLimits:
         """
         current_app.config['TX_LIMIT'] = Decimal('100')
 
-        response = client.get(url_for('site.quote'), query_string={
+        response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
             'destination': 'DABADKKK/GB82WEST12345698765432',
             'amount': '122.00/EUR'})
@@ -358,7 +358,7 @@ class TestLimits:
         self.create_ticket('received', 90, 10)
 
         # We are unable to process 12 euros
-        response = client.get(url_for('site.quote'), query_string={
+        response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
             'destination': 'DABADKKK/GB82WEST12345698765432',
             'amount': '12.00/EUR'})
@@ -367,7 +367,7 @@ class TestLimits:
         assert result['error']
 
         # But 9 is fine.
-        response = client.get(url_for('site.quote'), query_string={
+        response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
             'destination': 'M/DABADKKK/GB82WEST12345698765432',
             'amount': '9.00/EUR'})
