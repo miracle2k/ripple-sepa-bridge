@@ -238,7 +238,7 @@
       We charge<br>
 
       <strong>
-      {{ '{:20,.2f}'.format(config['FIXED_FEE']) }} € <small>fixed fee</small><br>
+      {{ '{:20,.2f}'.format(Decimal(config['FIXED_FEE'])) }} € <small>fixed fee</small><br>
       +{{ config['VOLUME_FEE'] }}% <small>of amount</small>
       </strong>
       <br>

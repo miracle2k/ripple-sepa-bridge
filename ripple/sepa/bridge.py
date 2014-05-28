@@ -225,6 +225,7 @@ def index():
     tickets = Ticket.query.filter(
         Ticket.status!='quoted').order_by(Ticket.created_at.desc())[:10]
     return render_template(
-        'index.html', tickets=tickets, config=current_app.config)
+        'index.html', tickets=tickets, config=current_app.config,
+        Decimal=Decimal)
 
 
