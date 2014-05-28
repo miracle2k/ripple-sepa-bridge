@@ -321,10 +321,11 @@ class TestWasIPaidNotifications:
 class TestLimits:
     """Test transaction limit feature."""
 
-    def create_ticket(self, status, amount, fee, failed=''):
+    def create_ticket(self, status, amount, fee, failed='', iban=''):
         ticket = Ticket(amount=amount, fee=fee)
         ticket.status = status
         ticket.failed = failed
+        ticket.iban = iban
         db.session.add(ticket)
         db.session.commit()
         return ticket
@@ -346,11 +347,12 @@ class TestLimits:
         self.create_ticket('received', 50, 5, failed='unknown')
         assert Ticket.tx_volume_today() == 200
 
-    def test_individual_tx_limit(self, client):
-        """Cannot send a tx larger than the limit.
+    def test_user_tx_limit(self, client):
+        """This limit is applied on a per iban-basis
         """
-        current_app.config['TX_LIMIT'] = Decimal('100')
+        current_app.config['USER_TX_LIMIT'] = Decimal('100')
 
+        # Cannot send an individual transaction larger than the limit
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
             'destination': 'DABADKKK/GB82WEST12345698765432',
@@ -359,12 +361,35 @@ class TestLimits:
         result = json.loads(response.data.decode('utf8'))
         assert result['error']
 
-    def test_total_tx_limit(self, client):
+        # Check the accumulative limit (quoted transactions are ignored)
+        self.create_ticket('quoted', 99999, 10)
+        self.create_ticket('received', 90, 10, iban="GB82WEST12345698765432")
+
+        # 12 Euro is too much at this point.
+        response = client.get(url_for('bridge.quote'), query_string={
+            'type': 'quote', 'domain': 'testinghost',
+            'destination': 'F/DABADKKK/GB82WEST12345698765432',
+            'amount': '12.00/EUR'})
+        assert response.status_code == 200
+        result = json.loads(response.data.decode('utf8'))
+        assert result['error']
+
+        # But we are able to send a different IBAN
+        response = client.get(url_for('bridge.quote'), query_string={
+            'type': 'quote', 'domain': 'testinghost',
+            'destination': 'F/DABADKKK/CH9300762011623852957',
+            'amount': '12.00/EUR'})
+        assert response.status_code == 200
+        result = json.loads(response.data.decode('utf8'))
+        assert result['quote']
+
+
+    def test_bridge_tx_limit(self, client):
         """Make sure we stop accepting quotes when we are about to exceed
         the limit.
         """
 
-        current_app.config['DAILY_TX_LIMIT'] = Decimal('100')
+        current_app.config['BRIDGE_TX_LIMIT'] = Decimal('100')
         self.create_ticket('received', 90, 10)
 
         # We are unable to process 12 euros
@@ -376,7 +401,8 @@ class TestLimits:
         result = json.loads(response.data.decode('utf8'))
         assert result['error']
 
-        # But 9 is fine.
+        # But 9 Euro is fine - quoted transactions are ignored
+        self.create_ticket('quoted', 99999, 10)
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
             'destination': 'M/DABADKKK/GB82WEST12345698765432',

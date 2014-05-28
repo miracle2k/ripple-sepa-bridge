@@ -20,8 +20,8 @@ CONFIG_DEFAULTS = {
     # Additional fee based on percentage of transfer amount
     'VOLUME_FEE': Decimal('5'),
     # Limits daily, and for individual transactions
-    'TX_LIMIT': Decimal(100),
-    'DAILY_TX_LIMIT': Decimal(500),
+    'USER_TX_LIMIT': Decimal(100),
+    'BRIDGE_TX_LIMIT': Decimal(500),
     # Ask client to pay to this address
     'BRIDGE_ADDRESS': None,
     # Ask client to pay EUR of one of these issuers

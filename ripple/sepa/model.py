@@ -60,11 +60,11 @@ class Ticket(db.Model):
         self.bic = self.iban = self.recipient_name = self.text = ''
 
     @classmethod
-    def tx_volume_today(cls):
+    def tx_volume_today(cls, iban=None):
         """Determine the volume handled by the bridge today.
         """
         today = datetime.utcnow().date()
-        volume = (db.session
+        query = (db.session
             .query(sqlalchemy.sql.func.sum(Ticket.amount))
             # Ignore quotes for which no payment was received
             .filter(Ticket.status!='quoted')
@@ -74,5 +74,8 @@ class Ticket(db.Model):
             #   http://stackoverflow.com/questions/17333014/convert-selected-datetime-to-date-in-sqlalchemy#comment25152032_17334055
             #   http://sqlite.1065341.n5.nabble.com/CAST-td23755.html
             #.filter(cast(Ticket.created_at, sqlalchemy.types.Date)==today)
-        ).one()[0]
+        )
+        if iban:
+            query = query.filter(Ticket.iban == iban)
+        volume = query.one()[0]
         return volume or Decimal('0')
