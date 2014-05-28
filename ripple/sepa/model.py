@@ -56,6 +56,15 @@ class Ticket(db.Model):
                 'sent': 'SEPA transfer executed',
                 'confirmed': 'SEPA transfer confirmed'}[self.status]
 
+    @property
+    def error_text(self):
+        if not self.failed:
+            return ''
+        try:
+            return {'cancelled': 'The transfer was cancelled.'}[self.failed]
+        except KeyError:
+            return 'Error Code: %s' % self.failed
+
     def clear(self):
         self.bic = self.iban = self.recipient_name = self.text = ''
 

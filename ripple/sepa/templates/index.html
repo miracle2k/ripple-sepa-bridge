@@ -191,6 +191,11 @@
     border: 1px solid rgb(20, 74, 187);
   }
 
+  ul.transactions li span.failed:first-child {
+    background-color: rgb(206, 54, 36);
+    border: 1px solid rgb(189, 30, 4);
+  }
+
   {# Info below #}
 
   hr {
@@ -257,9 +262,9 @@
     <ul class="transactions">
       {% for ticket in tickets %}
       <li>
-        <span class="{{ ticket.status }}"></span>
+        <span class="{{ ticket.status }} {% if ticket.failed %}failed{% endif %} {{ ticket.failed }}"></span>
         <em>{{ ticket.ripple_address }}</em> sent <em>{{ "{:,.2f}".format(ticket.amount) }} €</em> <small>&nbsp;&dash; {{ ticket.created_at|timesince }} ago</small>.
-        <span>Status: {{ ticket.status_text }}</span>
+        <span>Status: {% if ticket.failed %}{{ ticket.error_text }}{% else %}{{ ticket.status_text }}{% endif %}</span>
       </li>
       {% endfor %}
     </ul>
