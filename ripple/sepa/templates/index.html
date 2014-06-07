@@ -340,7 +340,7 @@ $(function() {
   $('form').on('submit', function() {
     var form = $(this);
     var parts = [];
-    function encode(s) { return s.replace(/^\s+|\s+$/g, '').replace(/ /g, '+'); }
+    function encode(s) { return s.replace(/^\s+|\s+$/g, '').replace(/ /g, '%2B'); }
     if (form.find('[name=recipient]').val())
       parts.push(encode(form.find('[name=recipient]').val()));
     parts.push(encode(form.find('[name=iban]').val()));
