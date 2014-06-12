@@ -137,8 +137,8 @@ def quote():
                 {
                     "currency": "EUR",
                     "value": "%s" % (ticket.amount + ticket.fee),
-                    "issuer": current_app.config['ACCEPTED_ISSUERS'][0]
-                }
+                    "issuer": issuer
+                } for issuer in current_app.config['ACCEPTED_ISSUERS']
             ],
             "address": current_app.config['BRIDGE_ADDRESS'],
             "expires": calendar.timegm(ticket.expires.timetuple())
