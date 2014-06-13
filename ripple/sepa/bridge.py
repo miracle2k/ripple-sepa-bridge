@@ -68,11 +68,18 @@ def federation():
     """
     config = {
         "currencies": [
+            # Either list all specific issuers we accept, or just say
+            # EUR.
+            {
+                "currency": "EUR",
+            }
+            if not current_app.config['ACCEPTED_ISSUERS']
+            else
             {
                 "currency": "EUR",
                 "issuer": issuer
             }
-            for issuer in current_app.config['ACCEPTED_ISSUERS']
+            for issuer in (current_app.config['ACCEPTED_ISSUERS'])
         ],
         "quote_url": '{}://{}{}'.format(
             'https' if current_app.config['USE_HTTPS'] else 'http',
