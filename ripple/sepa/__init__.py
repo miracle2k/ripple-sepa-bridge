@@ -61,7 +61,6 @@ def create_app(config=None):
 
     # Validate config
     assert app.config.get('BRIDGE_ADDRESS')
-    assert app.config.get('ACCEPTED_ISSUERS')
     assert app.config.get('POSTMARK_KEY')
     assert app.config.get('POSTMARK_SENDER')
 

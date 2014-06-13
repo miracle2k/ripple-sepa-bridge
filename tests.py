@@ -172,15 +172,39 @@ class TestBridgeAPI:
                Decimal(result['quote']['send'][0]['value'])
 
     def test_quote_amount(self, client):
-        # Test a request with incorrectly formatted SEPA recipient.
+        # Test a request with incorrectly formatted amount.
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': '', 'amount': '100.88000009/EUR'})
+            'destination': 'User/DABADKKK/GB82WEST12345698765432/Text',
+            'amount': '100.88000009/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
         assert result['error']
         assert not Ticket.query.all()
 
+    def test_quoted_issuers(self, client):
+        """Test the ACCEPTED_ISSUERS configuration."""
+        current_app.config['ACCEPTED_ISSUERS'] = ['a', 'b', 'c']
+        response = client.get(url_for('bridge.quote'), query_string={
+            'type': 'quote', 'domain': 'testinghost',
+            'destination': 'User/DABADKKK/GB82WEST12345698765432/Text',
+            'amount': '22.00/EUR'})
+        result = json.loads(response.data.decode('utf8'))
+        from pdb import set_trace; set_trace()
+        assert len(result['quote']['send']) == 3
+        assert result['quote']['send'][0]['issuer'] == 'a'
+
+        # If no accepted issuers are given, the bridge address is used,
+        # which causes any issuer to be allowed.
+        current_app.config['BRIDGE_ADDRESS'] = 'foobar'
+        current_app.config['ACCEPTED_ISSUERS'] = []
+        response = client.get(url_for('bridge.quote'), query_string={
+            'type': 'quote', 'domain': 'testinghost',
+            'destination': 'User/DABADKKK/GB82WEST12345698765432/Text',
+            'amount': '22.00/EUR'})
+        result = json.loads(response.data.decode('utf8'))
+        assert len(result['quote']['send']) == 1
+        assert result['quote']['send'][0]['issuer'] == 'foobar'
 
 class TestWasIPaidNotifications:
     """Test incoming payment notifications on the bridge account."""
