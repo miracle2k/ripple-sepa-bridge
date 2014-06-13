@@ -133,12 +133,17 @@ def quote():
         "result": "success",
         "quote": {
             "invoice_id": ticket.id,
+            # Accept either an explicit list of issuers, or - by specifying
+            # the bridge destination address as the issuer, accept any issue
+            # the bridge as trustlines for.
+            # https://ripplelabs.atlassian.net/browse/WC-1855
             "send": [
                 {
                     "currency": "EUR",
                     "value": "%s" % (ticket.amount + ticket.fee),
                     "issuer": issuer
-                } for issuer in current_app.config['ACCEPTED_ISSUERS']
+                } for issuer in (current_app.config['ACCEPTED_ISSUERS'] or
+                        [current_app.config['BRIDGE_ADDRESS']])
             ],
             "address": current_app.config['BRIDGE_ADDRESS'],
             "expires": calendar.timegm(ticket.expires.timetuple())

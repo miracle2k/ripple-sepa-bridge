@@ -24,7 +24,12 @@ CONFIG_DEFAULTS = {
     'BRIDGE_TX_LIMIT': Decimal(500),
     # Ask client to pay to this address
     'BRIDGE_ADDRESS': None,
-    # Ask client to pay EUR of one of these issuers
+    # Ask client to pay EUR of one of these issuers. Due to
+    # https://ripplelabs.atlassian.net/browse/WC-1855 only the first
+    # issuer will actually be considered by the client.
+    #
+    # If you leave this empty the bridge responds in such a way that
+    # any currency accepted by the bridge account is considered.
     'ACCEPTED_ISSUERS': [],
     # URL of the SEPA service to call
     'SEPA_API': None,
