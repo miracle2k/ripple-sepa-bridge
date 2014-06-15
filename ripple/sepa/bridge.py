@@ -10,7 +10,7 @@ from werkzeug.exceptions import BadRequest
 
 from ripple.sepa.model import db, Ticket
 from ripple_federation import Federation
-from .utils import parse_sepa_data, add_response_headers
+from .utils import add_response_headers, parse_sepa_destination, validate_sepa
 
 
 bridge = Blueprint('bridge', __name__, static_folder='static')
@@ -66,38 +66,88 @@ def federation():
     Note that the SEPA recipient is NOT validated here; the Ripple client
     will only show the user error messages that occur during the quote.
     """
-    config = {
-        "currencies": [
-            # Either list all specific issuers we accept, or just say
-            # EUR.
-            {
-                "currency": "EUR",
-            }
-            if not current_app.config['ACCEPTED_ISSUERS']
-            else
-            {
-                "currency": "EUR",
-                "issuer": issuer
-            }
-            for issuer in (current_app.config['ACCEPTED_ISSUERS'])
-        ],
-        "quote_url": '{}://{}{}'.format(
-            'https' if current_app.config['USE_HTTPS'] else 'http',
-            request.host, url_for('.quote')),
-    }
-    federation = Federation({request.host: config})
+    def handle_request(domain, user):
+        # The user can specify SEPA data in the destination already.
+        # This allows linking to a pre-filled SEPA payment form.
+        try:
+            defaults = parse_sepa_destination(user)
+        except ValueError as e:
+            defaults = {'name': '', 'iban': '', 'bic': '', 'text': ''}
 
+        config = {
+            "extra_fields": [
+                {
+                    "label": "Name of Recipient",
+                    "hint": "Required.",
+                    "required": True,
+                    "name": "name",
+                    "value": defaults['name'],
+                    "type": "text"
+                },
+                {
+                    "label": "IBAN",
+                    "hint": " Will look something like this: GB82WEST12345698765432",
+                    "required": True,
+                    "name": "iban",
+                    "value": defaults['iban'],
+                    "type": "text"
+                },
+                {
+                    "label": "BIC",
+                    "name": "bic",
+                    "hint": "Required. Will look something like this: DABADKKK",
+                    "required": True,
+                    "value": defaults['bic'],
+                    "type": "text"
+                },
+                {
+                    "label": "Text",
+                    "hint": "Optional",
+                    "name": "name",
+                    "required": False,
+                    "value": defaults['text'],
+                    "type": "text"
+                }
+
+            ],
+            "currencies":
+                # Either list all specific issuers we accept, or just say EUR.
+                [{"currency": "EUR"}]
+                if not current_app.config['ACCEPTED_ISSUERS']
+                else
+                [
+                    {
+                        "currency": "EUR",
+                        "issuer": issuer
+                    }
+                    for issuer in (current_app.config['ACCEPTED_ISSUERS'])]
+            ,
+            "quote_url": '{}://{}{}'.format(
+                'https' if current_app.config['USE_HTTPS'] else 'http',
+                request.host, url_for('.quote')),
+        }
+
+
+        return config
+
+    federation = Federation({request.host: handle_request})
     return jsonify(federation.endpoint(request.values, ))
 
 
 @bridge.route('/quote')
 @add_response_headers(CORS)
 def quote():
+    sepa = {
+        'bic': request.values.get('bic', ''),
+        'iban': request.values.get('iban', ''),
+        'name': request.values.get('name', ''),
+        'text': request.values.get('text', ''),
+    }
     try:
-        sepa = parse_sepa_data(request.values['destination'])
+        validate_sepa(sepa)
     except ValueError as e:
         return jsonify(Federation.error(
-            'invalidSEPA', 'Cannot find a valid SEPA recipient: %s' % e))
+            'invalidSEPA', '%s' % e))
 
     amount = request.values['amount'].split('/')
     if len(amount) != 2:

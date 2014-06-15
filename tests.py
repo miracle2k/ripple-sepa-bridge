@@ -8,73 +8,53 @@ import responses
 import pytest
 from ripple.sepa import create_app
 from ripple.sepa.bridge import Ticket, db
-from ripple.sepa.utils import parse_sepa_data
+from ripple.sepa.utils import parse_sepa_destination, validate_sepa
 
 
 def test_sepa_url():
     """Test the parsing of our SEPA-recipient encoding.
     """
 
+    p = parse_sepa_destination
+
     # Full dataset
-    assert parse_sepa_data('User+Name/GB82WEST12345698765432/DABADKKK/Foo+Bar') == {
+    assert p('User+Name/GB82WEST12345698765432/DABADKKK/Foo+Bar') == {
         'iban': 'GB82WEST12345698765432',
         'bic': 'DABADKKK',
         'name': 'User Name',
         'text': 'Foo Bar'
     }
-
-    # BIC/IBAN reversed
-    assert parse_sepa_data('User+Name/DABADKKK/GB82WEST12345698765432/Foo+Bar') == {
-        'iban': 'GB82WEST12345698765432',
-        'bic': 'DABADKKK',
-        'name': 'User Name',
-        'text': 'Foo Bar'
-    }
-
-    # No name (may be allowed or disallowd)
-    assert parse_sepa_data('DABADKKK/GB82WEST12345698765432/Foo+Bar', require_name=False) == {
-        'iban': 'GB82WEST12345698765432',
-        'bic': 'DABADKKK',
-        'name': '',
-        'text': 'Foo Bar'
-    }
-    with pytest.raises(ValueError):
-        parse_sepa_data('DABADKKK/GB82WEST12345698765432/Foo+Bar', require_name=True)
 
     # No text
-    assert parse_sepa_data('User+Name/DABADKKK/GB82WEST12345698765432') == {
+    assert p('User+Name/GB82WEST12345698765432/DABADKKK') == {
         'iban': 'GB82WEST12345698765432',
         'bic': 'DABADKKK',
         'name': 'User Name',
         'text': ''
     }
 
-    # Neither name of text
-    assert parse_sepa_data('DABADKKK/GB82WEST12345698765432', require_name=False) == {
-        'iban': 'GB82WEST12345698765432',
-        'bic': 'DABADKKK',
-        'name': '',
-        'text': ''
-    }
+def test_sepa_validate():
+    """Test SEPA dataset validation."""
 
     # Invalid IBAN
     with pytest.raises(ValueError):
-        parse_sepa_data('DABADKKK/GB82WEST12345691765432')
+        validate_sepa({'bic': 'DABADKKK', 'iban': 'GB82WEST12345691765432',
+                       'name': 'foo', 'text': 'bar'})
 
     # Invalid BIC
     with pytest.raises(ValueError):
-        parse_sepa_data('DABADKKKa/GB82WEST12345698765432')
+        validate_sepa({'bic': 'DABADKKKa', 'iban': 'GB82WEST12345698765432',
+                       'name': 'foo', 'text': 'bar'})
 
-    # No IBAN
+    # No name
     with pytest.raises(ValueError):
-        parse_sepa_data('User/DABADKKK/Text')
-    # No BIC
-    with pytest.raises(ValueError):
-        parse_sepa_data('User/GB82WEST12345698765432/Text')
+        validate_sepa({'bic': 'DABADKKK', 'iban': 'GB82WEST12345698765432',
+                       'name': '', 'text': 'bar'})
 
-    # [Regression] Invalid IBAN with 4 parts
+    # Text too long
     with pytest.raises(ValueError):
-        parse_sepa_data('Michael/GB82WEST1234569d8765432/DABADKKK/Test')
+        validate_sepa({'bic': 'DABADKKK', 'iban': 'GB82WEST12345698765432',
+                       'name': '', 'text': 'b'*140})
 
 
 @pytest.fixture
@@ -129,24 +109,32 @@ class TestBridgeAPI:
             'type': 'federation', 'domain': 'testinghost', 'destination': 'foo'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
-        assert result['error']
+        assert 'quote' in result['federation_json']['quote_url']
+        assert result['federation_json']['extra_fields'][0]['value'] == ''
+        assert result['federation_json']['extra_fields'][1]['value'] == ''
+        assert result['federation_json']['extra_fields'][2]['value'] == ''
+        assert result['federation_json']['extra_fields'][3]['value'] == ''
 
         # Test a request with proper SEPA recipient.
         response = client.get(url_for('bridge.federation'), query_string={
             'type': 'federation', 'domain': 'testinghost',
-            'destination': 'M/DABADKKK/GB82WEST12345698765432'})
+            'destination': 'M/i/b/f'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
         assert 'quote' in result['federation_json']['quote_url']
+        assert result['federation_json']['extra_fields'][0]['value'] == 'M'
+        assert result['federation_json']['extra_fields'][1]['value'] == 'i'
+        assert result['federation_json']['extra_fields'][2]['value'] == 'b'
+        assert result['federation_json']['extra_fields'][3]['value'] == 'f'
 
     def test_quote(self, client):
         """Test the Ripple quote view.
         """
 
-        # Test a request with incorrectly formatted SEPA recipient.
+        # Test a request with missing SEPA fields.
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': '', 'amount': '22.00/EUR'})
+            'amount': '22.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
         assert result['error']
@@ -155,7 +143,8 @@ class TestBridgeAPI:
         # Test a successful quote request
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'User/DABADKKK/GB82WEST12345698765432/Text',
+            'name': 'User', 'bic': 'DABADKKK',
+            'iban': 'GB82WEST12345698765432', 'text': 'Text',
             'amount': '22.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
@@ -187,7 +176,8 @@ class TestBridgeAPI:
         current_app.config['ACCEPTED_ISSUERS'] = ['a', 'b', 'c']
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'User/DABADKKK/GB82WEST12345698765432/Text',
+            'name': 'User', 'bic': 'DABADKKK',
+            'iban': 'GB82WEST12345698765432', 'text': 'Text',
             'amount': '22.00/EUR'})
         result = json.loads(response.data.decode('utf8'))
         assert len(result['quote']['send']) == 3
@@ -199,11 +189,13 @@ class TestBridgeAPI:
         current_app.config['ACCEPTED_ISSUERS'] = []
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'User/DABADKKK/GB82WEST12345698765432/Text',
+            'name': 'User', 'bic': 'DABADKKK',
+            'iban': 'GB82WEST12345698765432', 'text': 'Text',
             'amount': '22.00/EUR'})
         result = json.loads(response.data.decode('utf8'))
         assert len(result['quote']['send']) == 1
         assert result['quote']['send'][0]['issuer'] == 'foobar'
+
 
 class TestWasIPaidNotifications:
     """Test incoming payment notifications on the bridge account."""
@@ -378,7 +370,8 @@ class TestLimits:
         # Cannot send an individual transaction larger than the limit
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'F/DABADKKK/GB82WEST12345698765432',
+            'name': 'User', 'bic': 'DABADKKK',
+            'iban': 'GB82WEST12345698765432', 'text': 'Text',
             'amount': '122.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
@@ -391,7 +384,8 @@ class TestLimits:
         # 12 Euro is too much at this point.
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'F/DABADKKK/GB82WEST12345698765432',
+            'name': 'User', 'bic': 'DABADKKK',
+            'iban': 'GB82WEST12345698765432', 'text': 'Text',
             'amount': '12.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
@@ -400,12 +394,12 @@ class TestLimits:
         # But we are able to send a different IBAN
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'F/DABADKKK/CH9300762011623852957',
+            'name': 'User', 'bic': 'DABADKKK',
+            'iban': 'CH9300762011623852957', 'text': 'Text',
             'amount': '12.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
         assert result['quote']
-
 
     def test_bridge_tx_limit(self, client):
         """Make sure we stop accepting quotes when we are about to exceed
@@ -418,7 +412,8 @@ class TestLimits:
         # We are unable to process 12 euros
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'M/DABADKKK/GB82WEST12345698765432',
+            'name': 'User', 'bic': 'DABADKKK',
+            'iban': 'GB82WEST12345698765432', 'text': 'Text',
             'amount': '12.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))
@@ -428,7 +423,8 @@ class TestLimits:
         self.create_ticket('quoted', 99999, 10)
         response = client.get(url_for('bridge.quote'), query_string={
             'type': 'quote', 'domain': 'testinghost',
-            'destination': 'M/DABADKKK/GB82WEST12345698765432',
+            'name': 'User', 'bic': 'DABADKKK',
+            'iban': 'GB82WEST12345698765432', 'text': 'Text',
             'amount': '9.00/EUR'})
         assert response.status_code == 200
         result = json.loads(response.data.decode('utf8'))

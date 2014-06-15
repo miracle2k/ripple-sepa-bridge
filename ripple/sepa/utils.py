@@ -298,87 +298,61 @@ def add_response_headers(headers={}):
     return decorator
 
 
-def parse_sepa_data(s, require_name=True):
-    """To use this bridge, all the SEPA recipient info has to be somehow
-    put in the user part of user@domain. This will convert such a user
-    string into a dict with bic, iban, name and text fields.
-
-    The format is::
-
-        <recipient name> <iban> <bic> <text>
-
-    Since IBAN and BIC can be definitively identified they act as a
-    structure element of sorts, in between the spaces.
-
-    Unfortunately, the official Ripple client currently does not support
-    spaces in the federation address at all, so instead we need to use
-    this format::
+def parse_sepa_destination(s):
+    """Parse a string into a dict of SEPA information. The format is::
 
         recipient+name/IBAN/BIC/foo+bar
 
-    This is the recommended format. Really what we do is  split at /, try
-    to find parts that are an IBAN or BIC, and let the other two parts be
-    Recipient + Text.
+    The text is optional. Since this format is only intended to provide
+    a way to pre-fill the SEPA form, as opposed to entered by a human,
+    we can afford to be pretty rigerous about it.
     """
-    if ' ' in s:
-        # Use the superior, space based form.
-        raise ValueError('Not yet supported')
-
-    else:
-        enable_spaces = lambda s: s.replace('+', ' ')
-        parts = s.split('/')
-        if len(parts) not in (2, 3, 4):
-            raise ValueError('old-style recipient has wrong number of parts')
-
-        recipient_name = text = iban = bic = ''
-        for idx, part in enumerate(parts):
-            try:
-                bic = validate_swift_bic(part)
-                continue
-            except ValueError:
-                pass
-
-            try:
-                iban = stdnum.iban.validate(part)
-                continue
-            except ValidationError:
-                # TODO: We can do better here; if we get a more specific
-                # exception like InvalidChecksum, we can assume it's an
-                # IBAN but with a typo.
-                pass
-
-            # An unrecognized text will be the recipient only if
-            # listed first, or when we know we have all four parts.
-            if not recipient_name:
-                if idx == 0 or len(parts) == 4:
-                    recipient_name = enable_spaces(part)
-                    continue
-
-            # If there are only three parts (= 1 text part), we
-            # will use it as the text unless it is first.
-            if not text:
-                text = enable_spaces(part)
-                continue
-
-            raise ValueError('Do not know what to make of %s' % part)
-
-
-    # BIC and IBAN are required
-    if not iban:
-        raise ValueError('Did not find a valid IBAN')
-    if not bic:
-        raise ValueError('Did not find a valid BIC')
-    if not recipient_name and require_name:
-        # Maybe the name could be left off in theory (?), but we
-        # can't provide this service right now.
-        raise ValueError('Did not find a recipient name')
-
+    enable_spaces = lambda s: s.replace('+', ' ')
+    parts = s.split('/', 4)
+    if len(parts) not in (3, 4):
+        raise ValueError('Expecting either 3 or 4 parts separated by /')
+    parts = [enable_spaces(p) for p in parts]
+    recipient_name, iban, bic = parts[0], parts[1], parts[2]
+    text = parts[3] if len(parts) == 4 else ''
     return {
         'name': recipient_name,
         'text': text,
         'iban': iban,
         'bic': bic
     }
+
+
+def validate_sepa(sepa):
+    """Will validate the dict of SEPA data (as returned by
+    :meth:`parse_sepa_destination`) and raise ValueErrors if there
+    are problems.
+    """
+    # Validate IBAN
+    if not 'iban' in sepa:
+        raise ValueError('An IBAN needs to be provided')
+    try:
+        stdnum.iban.validate(sepa['iban'])
+    except ValidationError:
+        raise ValueError('%s is not a valid IBAN' % sepa['iban'])
+
+    # Validate BIC
+    if not 'bic' in sepa:
+        raise ValueError('An BIC needs to be provided')
+    try:
+        validate_swift_bic(sepa['bic'])
+    except ValidationError:
+        raise ValueError('%s is not a valid BIC' % sepa['iban'])
+
+    # Make sure there is a recipient name
+    if not sepa['name']:
+        raise ValueError('The name of the recipient needs to be provided')
+
+    # Make sure the text is not too long
+    if 'text' in sepa:
+        # Note: SEPA limit is 140, but leave some room for any custom
+        # text we might want to insert.
+        if len(sepa['text']) > 130:
+            raise ValueError('Text may not be longer than 130 characters')
 
 
 def timesince(d, now=None, reversed=False):
