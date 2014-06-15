@@ -2,9 +2,10 @@
 
 # Create a database with flynn-postgres.
 Flynn-Postgres:
-    in: db-api
-    for: db
-    expose_as: POSTGRES_
+    database:
+        via: db-api
+        in: db
+        expose_as: POSTGRES_
 
 
 # Run postgres itself
@@ -29,6 +30,7 @@ db-api:
 app:
     git: .
     cmd: web
+    require: database
     sdutil:
         expose:
           "postgres": PGHOST
