@@ -190,7 +190,6 @@ class TestBridgeAPI:
             'destination': 'User/DABADKKK/GB82WEST12345698765432/Text',
             'amount': '22.00/EUR'})
         result = json.loads(response.data.decode('utf8'))
-        from pdb import set_trace; set_trace()
         assert len(result['quote']['send']) == 3
         assert result['quote']['send'][0]['issuer'] == 'a'
 
