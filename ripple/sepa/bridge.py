@@ -103,7 +103,7 @@ def federation():
                 {
                     "label": "Text",
                     "hint": "Optional",
-                    "name": "name",
+                    "name": "text",
                     "required": False,
                     "value": defaults['text'],
                     "type": "text"

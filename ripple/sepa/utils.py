@@ -341,14 +341,14 @@ def validate_sepa(sepa):
     try:
         validate_swift_bic(sepa['bic'])
     except ValidationError:
-        raise ValueError('%s is not a valid BIC' % sepa['iban'])
+        raise ValueError('%s is not a valid BIC' % sepa['bic'])
 
     # Make sure there is a recipient name
     if not sepa['name']:
         raise ValueError('The name of the recipient needs to be provided')
 
     # Make sure the text is not too long
-    if 'text' in sepa:
+    if sepa['text']:
         # Note: SEPA limit is 140, but leave some room for any custom
         # text we might want to insert.
         if len(sepa['text']) > 130:
