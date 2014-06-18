@@ -5,7 +5,7 @@ Flynn-Postgres:
     database:
         via: db-api
         in: db
-        expose_as: POSTGRES_
+        expose_as: PG
 
 
 # Run postgres itself
