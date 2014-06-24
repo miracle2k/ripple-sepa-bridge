@@ -86,7 +86,7 @@ def federation():
                 },
                 {
                     "label": "IBAN",
-                    "hint": " Will look something like this: GB82WEST12345698765432",
+                    "hint": "Required. Will look something like this: GB82WEST12345698765432",
                     "required": True,
                     "name": "iban",
                     "value": defaults['iban'],
@@ -108,7 +108,6 @@ def federation():
                     "value": defaults['text'],
                     "type": "text"
                 }
-
             ],
             "currencies":
                 # Either list all specific issuers we accept, or just say EUR.
