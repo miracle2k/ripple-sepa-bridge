@@ -221,13 +221,14 @@ def on_payment_received():
     """
 
     # Validate the notification
-    # https://github.com/kennethreitz/requests/issues/2071
-    result = requests.post(
-        'https://wasipaid.com/receipt',
-        data=request.get_data(), headers={
-            'Content-Type': 'application/octet-stream'})
-    if result.text != 'VALID':
-        return 'not at all ok', 400
+    if not current_app.config.get('RECEIPT_DEBUGGING'):
+        # https://github.com/kennethreitz/requests/issues/2071
+        result = requests.post(
+            'https://wasipaid.com/receipt',
+            data=request.get_data(), headers={
+                'Content-Type': 'application/octet-stream'})
+        if result.text != 'VALID':
+            return 'not at all ok', 400
 
     payment = request.json['data']
     tx_hash = request.json['transaction']['hash']
