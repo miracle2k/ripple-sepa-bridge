@@ -267,7 +267,7 @@ class TestWasIPaidNotifications:
         assert data_sent['name'] == 'A User'
         assert data_sent['iban'] == 'IBAN'
         assert data_sent['bic'] == 'BIC'
-        assert data_sent['text'] == 'Yadda'
+        assert data_sent['text'] == 'sepa.link: Yadda'
 
         # We have deleted the bank info, updated the ticket status and
         # assigned the sending ripple address.

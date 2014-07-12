@@ -33,6 +33,7 @@ CONFIG_DEFAULTS = {
     'ACCEPTED_ISSUERS': [],
     # URL of the SEPA service to call
     'SEPA_API': None,
+    'SEPA_API_AUTH': None,
     # The postmark API config; the bridge will notify you if it receives
     # transactions that it cannot process.
     'POSTMARK_KEY': None,

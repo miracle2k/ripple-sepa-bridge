@@ -1,11 +1,13 @@
 import calendar
 from decimal import Decimal
+import json
 
 from flask import (
     request, Response, url_for, jsonify, render_template, Blueprint,
     current_app)
 from postmark import PMMail
 import requests
+from requests.exceptions import RequestException
 from werkzeug.exceptions import BadRequest
 
 from ripple.sepa.model import db, Ticket
@@ -210,6 +212,12 @@ def quote():
 @bridge.route('/on_payment', methods=['POST'])
 def on_payment_received():
     """wasipaid.com will call this url when we receive a payment.
+
+    TODO: To make 100% sure we do not send duplicate payment requests
+    to the backend, this view manually puts tickets into a "sending"
+    state before contacting the backend; a conflict can then be resolved
+    manually. However, I would prefer for the backend to be responsible
+    for this.
     """
 
     # Validate the notification
@@ -229,20 +237,71 @@ def on_payment_received():
         if payment['invoice_id'] else None
     if ticket:
         if Decimal(payment['amount']) == (ticket.amount + ticket.fee):
+            # Make sure the ticket in question is in the right status;
+            # otherwise something is wrong, and we are in danger of asking
+            # the same payment to be sent twice.
+            if not ticket.status in ('received', 'quoted'):
+                raise RuntimeError("Ticket was already processed: %s" % ticket.id)
+
+            # No matter what happens, we can record that we have indeed
+            # received the payment, so the user will not have any doubt
+            # about that; mo matter an error that may occur later.
+            ticket.ripple_address = payment['sender']
+            ticket.status = 'received'
+            db.session.commit()
+
             # Call the SEPA backend
             if current_app.config['SEPA_API']:
-                result = requests.post(current_app.config['SEPA_API'], data={
-                    'name': ticket.recipient_name,
-                    'bic': ticket.bic,
-                    'iban': ticket.iban,
-                    'text': ticket.text,
-                    'verify': tx_hash
-                })
-                result.raise_for_status()
-            # If no backend is configured, send an email instead.
+                # Set the status to "sent" before handing it off to the
+                # backend API; this is because we don't trust the backend
+                # to be idempotent; we cannot risk that us crashing right
+                # after the backend call could lead to duplicate transfers.
+                ticket.status = 'sending'
+                db.session.commit()
+
+                error = None
+                try:
+                    result = requests.post(current_app.config['SEPA_API'],
+                                           data=json.dumps({
+                        'id': ticket.id[:35],
+                        'name': ticket.recipient_name,
+                        'bic': ticket.bic,
+                        'iban': ticket.iban,
+                        'amount': "1,00",  #format(ticket.amount, ',.2f'),
+                        'text': 'sepa.link: %s' % ticket.text,
+                        'verify': tx_hash
+                    }), headers={
+                        'Content-type': 'application/json',
+                        'Authorization': current_app.config['SEPA_API_AUTH']})
+                except RequestException as e:
+                    error = '%s' % e
+                else:
+                    if result.status_code != 200:
+                        error =  "Unexpected status code: %s" % result.status_code
+
+                    elif 'error' in result.json():
+                        error = 'Backend did not accept transfer: %s' % \
+                            result.json()['error']
+
+                if error:
+                    # We verifiably did not submit, remove the sending state.
+                    ticket.status = 'received'
+                    db.session.commit()
+                    # Make sure we don't accept the notification
+                    raise ValueError(error)
+
+                else:
+                    ticket.status = 'sent'
+                    db.session.commit()
+
+                    send_mail(
+                        'SEPA bridge: Transaction processed',
+                        render_template('transfer.txt', **{'ticket': ticket}))
+
+            # If no backend is configured, only send email.
             else:
                 send_mail(
-                    'Payment received: Execute a transfer',
+                    'SEPA bridge: Payment received: Execute a transfer',
                     render_template('transfer.txt', **{'ticket': ticket}))
 
             ticket.ripple_address = payment['sender']
