@@ -268,7 +268,7 @@ def on_payment_received():
                         'name': ticket.recipient_name,
                         'bic': ticket.bic,
                         'iban': ticket.iban,
-                        'amount': "1,00",  #format(ticket.amount, ',.2f'),
+                        'amount': format(ticket.amount, ',.2f'),
                         'text': 'sepa.link: %s' % ticket.text,
                         'verify': tx_hash
                     }), headers={
