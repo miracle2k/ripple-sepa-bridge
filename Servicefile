@@ -29,7 +29,6 @@ db-api:
 
 app:
     git: .
-    cmd: web
     require: database
     sdutil:
         expose:
