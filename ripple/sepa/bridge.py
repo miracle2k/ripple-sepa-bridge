@@ -305,8 +305,8 @@ def on_payment_received():
                     'SEPA bridge: Payment received: Execute a transfer',
                     render_template('transfer.txt', **{'ticket': ticket}))
 
-            ticket.ripple_address = payment['sender']
-            ticket.status = 'received'
+            # Ticket was processed successfully, forget sensitive data
+            # and drop the notification.
             ticket.clear()
             return 'OK', 200
 

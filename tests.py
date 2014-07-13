@@ -270,7 +270,7 @@ class TestWasIPaidNotifications:
 
         # We have deleted the bank info, updated the ticket status and
         # assigned the sending ripple address.
-        assert ticket.status == 'received'
+        assert ticket.status == 'sent'
         assert ticket.ripple_address == 'rsender'
         assert ticket.iban == ''
         assert ticket.bic == ''
