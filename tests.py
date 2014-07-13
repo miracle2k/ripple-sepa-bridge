@@ -1,7 +1,6 @@
 from decimal import Decimal
 import json
 from unittest import mock
-from urllib.parse import parse_qsl
 from flask import url_for, current_app
 import postmark
 import responses
@@ -209,7 +208,7 @@ class TestWasIPaidNotifications:
         # Mock the SEPA backend
         responses.add(
             responses.POST, app.config['SEPA_API'],
-            body='OK', status=200)
+            body='{"success": true}', status=200)
 
         responses.start()
         def done():
@@ -263,7 +262,7 @@ class TestWasIPaidNotifications:
 
         # Validate the call to the SEPA API
         assert len(responses.calls) == 2
-        data_sent = dict(parse_qsl(responses.calls[1].request.body, True))
+        data_sent = json.loads(responses.calls[1].request.body, True)
         assert data_sent['name'] == 'A User'
         assert data_sent['iban'] == 'IBAN'
         assert data_sent['bic'] == 'BIC'
@@ -277,6 +276,8 @@ class TestWasIPaidNotifications:
         assert ticket.bic == ''
         assert ticket.text == ''
         assert ticket.recipient_name == ''
+
+    # TODO: Test the SEPA_API backend call failing.
 
     def test_correct_payment_send_email(self, client):
         # With no SEPA backend configured, we will simply send out
