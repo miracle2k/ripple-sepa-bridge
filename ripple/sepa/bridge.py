@@ -235,7 +235,7 @@ def on_payment_received():
 
     # Find the ticket
     ticket = Ticket.query.get(payment['invoice_id'].lower()) \
-        if payment['invoice_id'] else None
+        if 'invoice_id' in payment else None
     if ticket:
         if Decimal(payment['amount']) == (ticket.amount + ticket.fee):
             # Make sure the ticket in question is in the right status;
