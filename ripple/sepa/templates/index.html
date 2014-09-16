@@ -347,7 +347,7 @@ $(function() {
     parts.push(trim(form.find('[name=bic]').val()));
     if (form.find('[name=text]').val())
       parts.push(trim(form.find('[name=text]').val()));
-    var name = parts.join('/') + '@sepa.link';
+    var name = parts.join('/');
 
     // Recently, the Ripple client changed its behaviour, which broke
     // our precent encoding for spaces above; the client started to
@@ -355,7 +355,7 @@ $(function() {
     // rejected the address. This only goes to show we cannot trust the
     // client, so now I'm wrapping the whole thing in base64 for safekeeping.
     window.location.href = "https://ripple.com//send?to="+
-      encodeURIComponent(btoa(name));
+      encodeURIComponent(btoa(name)) + '@sepa.link';
     return false;
   });
 });
