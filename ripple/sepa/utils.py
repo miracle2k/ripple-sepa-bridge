@@ -3,6 +3,7 @@ import string
 from datetime import timedelta, datetime
 import stdnum.iban
 from stdnum.exceptions import ValidationError
+import base64
 from flask import make_response
 
 
@@ -306,7 +307,16 @@ def parse_sepa_destination(s):
     The text is optional. Since this format is only intended to provide
     a way to pre-fill the SEPA form, as opposed to entered by a human,
     we can afford to be pretty rigerous about it.
+
+    Additional, it is supported that the string is base64 encoded
+    for safe keeping of spaces, which are not supported by the
+    Ripple client in destinations.
     """
+    try:
+        s = base64.b64decode(s).decode('utf-8')
+    except:
+        pass
+
     enable_spaces = lambda s: s.replace('+', ' ')
     parts = s.split('/', 4)
     if len(parts) not in (3, 4):

@@ -32,6 +32,22 @@ def test_sepa_url():
         'text': ''
     }
 
+    # Base64
+    assert p('VXNlciBOYW1lL0dCODJXRVNUMTIzNDU2OTg3NjU0MzIvREFCQURLS0s=') == {
+        'iban': 'GB82WEST12345698765432',
+        'bic': 'DABADKKK',
+        'name': 'User Name',
+        'text': ''
+    }
+
+    # Special case: an unencoded /../../ string decode as valid b64
+    assert p('User Name/GB82WEST12345698765432/DABADKKK') == {
+        'iban': 'GB82WEST12345698765432',
+        'bic': 'DABADKKK',
+        'name': 'User Name',
+        'text': ''
+    }
+
 def test_sepa_validate():
     """Test SEPA dataset validation."""
 
