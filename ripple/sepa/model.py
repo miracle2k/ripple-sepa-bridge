@@ -53,6 +53,11 @@ class Ticket(db.Model):
     def status_text(self):
         return {'quoted': 'Waiting for Ripple payment',
                 'received': 'SEPA transfer in queue',
+                # sending is a process-securing state, should only
+                # be valid for parts of a second. If it remains so
+                # longer, it indicates a serious internal error, so
+                # do not tell the user about it.
+                'sending': 'SEPA transfer in queue',
                 'sent': 'SEPA transfer executed',
                 'confirmed': 'SEPA transfer confirmed'}[self.status]
 

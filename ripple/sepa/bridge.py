@@ -253,7 +253,7 @@ def on_payment_received():
 
             # Call the SEPA backend
             if current_app.config['SEPA_API']:
-                # Set the status to "sent" before handing it off to the
+                # Set the status to "sending" before handing it off to the
                 # backend API; this is because we don't trust the backend
                 # to be idempotent; we cannot risk that us crashing right
                 # after the backend call could lead to duplicate transfers.
