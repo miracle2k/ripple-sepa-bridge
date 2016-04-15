@@ -15,6 +15,8 @@ CONFIG_DEFAULTS = {
     'PGUSER': None,
     'PGPASSWORD': None,
     'PGDATABASE': None,
+    'DB_PORT_5432_TCP_ADDR': None,
+
     # Fixed fee to charge for every transaction.
     'FIXED_FEE': Decimal('1.50'),
     # Additional fee based on percentage of transfer amount
@@ -67,12 +69,13 @@ def create_app(config=None):
 
     # Support specifying a postgres database url without anything.
     # I'd really like to find a good way of doing this outside.
-    if app.config.get('PGHOST'):
+    pg_host = app.config['PGHOST'] or app.config['DB_PORT_5432_TCP_ADDR']
+    if pg_host:
         app.config['SQLALCHEMY_DATABASE_URI'] = \
             'postgres://{u}:{p}@{h}/{n}'.format(
                 u=app.config['PGUSER'],
                 p=app.config['PGPASSWORD'],
-                h=app.config['PGHOST'],
+                h=pg_host,
                 n=app.config['PGDATABASE'],
             )
 
