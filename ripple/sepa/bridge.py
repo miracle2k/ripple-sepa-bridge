@@ -138,6 +138,9 @@ def federation():
 @bridge.route('/quote')
 @add_response_headers(CORS)
 def quote():
+    return jsonify(Federation.error(
+                'disabled', 'This bridge has been disabled.'))
+
     sepa = {
         'bic': request.values.get('bic', ''),
         'iban': request.values.get('iban', ''),
