@@ -1,7 +1,4 @@
 -r requirements-base.txt
 
 psycopg2==2.5.3
-
-# https://github.com/benoitc/gunicorn/pull/709
-# https://github.com/mitsuhiko/flask/issues/984
-https://github.com/benoitc/gunicorn/archive/223ab2a3f3b85286dcd7619740734e98d6ea04d4.zip
+gunicorn==19.6.0
